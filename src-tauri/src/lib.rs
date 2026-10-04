@@ -413,6 +413,7 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
         .item(&item("new", "New Document", Some("CmdOrCtrl+N"))?)
         .item(&item("open", "Open…", Some("CmdOrCtrl+O"))?)
         .item(&item("open-folder", "Open Folder…", Some("CmdOrCtrl+Shift+O"))?)
+        .item(&item("close-folder", "Close Folder", None)?)
         .item(&item("quick-open", "Quick Open…", Some("CmdOrCtrl+P"))?)
         .separator()
         .item(&item("save", "Save", Some("CmdOrCtrl+S"))?)

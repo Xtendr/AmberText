@@ -384,6 +384,7 @@ export const MENU_TO_COMMAND: Record<string, string> = {
   new: "new",
   open: "open",
   "open-folder": "open-folder",
+  "close-folder": "close-folder",
   "quick-open": "quick-open",
   save: "save",
   "save-as": "save-as",

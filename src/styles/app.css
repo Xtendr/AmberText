@@ -545,13 +545,37 @@ kbd {
   z-index: 2;
 }
 .sb-section-title {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  margin-left: -6px;
+  margin-right: auto;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-3);
+  cursor: default;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.sb-section-title:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+.sb-section-title svg {
+  flex: none;
+  opacity: 0.7;
+}
+.sb-section-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1610,25 +1634,31 @@ button.status-item:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 26px;
-  padding: 0 9px;
+  min-height: 26px;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 5px 9px;
+  box-sizing: border-box;
   border-radius: 7px;
   background: var(--inverse);
   color: var(--inverse-text);
   font-size: 12px;
   font-weight: 500;
-  white-space: nowrap;
+  line-height: 16px;
+  overflow-wrap: anywhere;
   box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.3);
   animation: tip-in 120ms var(--ease-out);
 }
 @keyframes tip-in {
   from {
     opacity: 0;
-    transform: translateY(-2px);
+    translate: 0 -2px;
   }
 }
 .tooltip .tip-keys {
+  flex: none;
   display: inline-flex;
+  white-space: nowrap;
   gap: 3px;
   color: color-mix(in oklab, var(--inverse-text) 60%, transparent);
   font-size: 11px;

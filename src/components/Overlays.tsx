@@ -231,15 +231,16 @@ export function ContextMenuHost() {
 interface Tip {
   text: string;
   kbd?: string;
-  x: number;
-  y: number;
-  below: boolean;
+  anchor: DOMRect;
 }
+
+const TIP_GAP = 8;
+const TIP_EDGE = 8;
 
 export function TooltipHost() {
   const [tip, setTip] = useState<Tip | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-  const [shift, setShift] = useState(0);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   useEffect(() => {
     let timer = 0;
@@ -249,10 +250,8 @@ export function TooltipHost() {
     const show = (el: HTMLElement) => {
       const text = el.dataset.tip;
       if (!text || !el.isConnected) return;
-      const r = el.getBoundingClientRect();
-      const below = r.top < 64;
-      setShift(0);
-      setTip({ text, kbd: el.dataset.kbd || undefined, x: r.left + r.width / 2, y: below ? r.bottom + 8 : r.top - 8, below });
+      setPos(null);
+      setTip({ text, kbd: el.dataset.kbd || undefined, anchor: el.getBoundingClientRect() });
     };
     const hide = () => {
       window.clearTimeout(timer);
@@ -296,10 +295,20 @@ export function TooltipHost() {
 
   useLayoutEffect(() => {
     if (!tip || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    const pad = 8;
-    if (r.left < pad) setShift(pad - r.left);
-    else if (r.right > window.innerWidth - pad) setShift(window.innerWidth - pad - r.right);
+    const { width, height } = ref.current.getBoundingClientRect();
+    const a = tip.anchor;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+    const above = a.top - TIP_GAP - height;
+    const below = a.bottom + TIP_GAP;
+    const fitsAbove = above >= TIP_EDGE;
+    const fitsBelow = below + height <= vh - TIP_EDGE;
+    const top = a.top < 64 ? (fitsBelow || !fitsAbove ? below : above) : fitsAbove || !fitsBelow ? above : below;
+    setPos({
+      left: clamp(a.left + a.width / 2 - width / 2, TIP_EDGE, vw - TIP_EDGE - width),
+      top: clamp(top, TIP_EDGE, vh - TIP_EDGE - height),
+    });
   }, [tip]);
 
   if (!tip) return null;
@@ -309,11 +318,7 @@ export function TooltipHost() {
       ref={ref}
       className="tooltip"
       role="tooltip"
-      style={{
-        left: tip.x + shift,
-        top: tip.y,
-        transform: `translate(-50%, ${tip.below ? "0" : "-100%"})`,
-      }}
+      style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: "hidden" }}
     >
       {tip.text}
       {keys.length > 0 && (

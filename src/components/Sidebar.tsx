@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
+  ChevronDown,
   ChevronRight,
   ChevronsDownUp,
   FilePlus,
@@ -12,6 +13,7 @@ import {
   Sun,
   SunMoon,
   ListTree,
+  X,
 } from "lucide-react";
 import { activeDoc, getState, setState, useStore, type TreeEdit } from "../state/store";
 import {
@@ -255,12 +257,27 @@ function FilesPanel() {
 
   const rootCreating = edit && edit.kind !== "rename" && samePath(edit.parent, ws.root);
 
+  const folderMenu = (target: HTMLElement) => {
+    const r = target.getBoundingClientRect();
+    const others = recentFolders.filter((p) => !samePath(p, ws.root)).slice(0, 5);
+    openContextMenu(r.left, r.bottom + 4, [
+      { label: "Open another folder…", run: () => void openFolderDialog() },
+      ...(others.length
+        ? [{ separator: true as const }, ...others.map((p) => ({ label: basename(p), run: () => void openFolder(p) }))]
+        : []),
+      { separator: true },
+      { label: `Reveal in ${fileManagerName}`, disabled: !isTauri, run: () => void fsApi.reveal(ws.root) },
+      { label: "Close folder", run: closeFolder },
+    ]);
+  };
+
   return (
     <div className="sb-scroll" role="tree" aria-label="Files">
       <div className="sb-section-head">
-        <span className="sb-section-title" data-tip={ws.root}>
-          {basename(ws.root)}
-        </span>
+        <button className="sb-section-title" data-tip={ws.root} aria-haspopup="menu" onClick={(e) => folderMenu(e.currentTarget)}>
+          <span className="sb-section-name">{basename(ws.root)}</span>
+          <ChevronDown size={12} strokeWidth={2.2} />
+        </button>
         <div className="sb-section-actions">
           <button className="icon-btn sm" data-tip="New document" onClick={() => setState({ treeEdit: { kind: "new-file", parent: ws.root } })}>
             <FilePlus size={14} />
@@ -270,6 +287,9 @@ function FilesPanel() {
           </button>
           <button className="icon-btn sm" data-tip="Collapse all" onClick={collapseAll}>
             <ChevronsDownUp size={14} />
+          </button>
+          <button className="icon-btn sm" data-tip="Close folder" onClick={closeFolder}>
+            <X size={14} />
           </button>
         </div>
       </div>

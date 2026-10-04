@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { BookOpen, ChevronDown, Columns2, PanelLeft, PenLine, Plus, Search, X } from "lucide-react";
-import { isDirty, setState, useStore, type ViewMode } from "../state/store";
+import { getState, isDirty, setState, useStore, type ViewMode } from "../state/store";
 import { closeDoc, closeOthers, displayName, activate, moveTab, newDoc, openContextMenu, setViewMode, toggleSidebar } from "../state/actions";
 import { commandById, formatKeys, runCommand } from "../commands";
 import { fileManagerName, isMac, isTauri, win } from "../lib/platform";
@@ -26,6 +26,7 @@ function AppMenuButton() {
       item("new"),
       item("open"),
       item("open-folder"),
+      ...(getState().workspace ? [item("close-folder")] : []),
       item("quick-open"),
       { separator: true },
       item("save"),
