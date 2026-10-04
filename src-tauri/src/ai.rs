@@ -376,6 +376,12 @@ fn install_runtime(app: &AppHandle, cancel: &AtomicBool) -> Result<(), String> {
     let (_, sha, size) = runtime_spec().ok_or("Local AI isn't available on this platform yet")?;
     download(app, &url, &archive, "runtime", Some((sha, size)), cancel)?;
     // bsdtar ships with macOS and Windows 10+, and reads both zip and tar.gz.
+    // On Windows, a GNU tar from Git or MSYS earlier on PATH can't read zip files.
+    #[cfg(windows)]
+    let mut cmd = Command::new(
+        std::env::var_os("SystemRoot").map_or_else(|| PathBuf::from("tar"), |r| PathBuf::from(r).join("System32").join("tar.exe")),
+    );
+    #[cfg(not(windows))]
     let mut cmd = Command::new("tar");
     cmd.arg("-xf").arg(&archive).arg("-C").arg(&dir);
     hide_window(&mut cmd);

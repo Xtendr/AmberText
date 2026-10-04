@@ -4,6 +4,7 @@
   var ua = navigator.userAgent;
   var platform = /Mac|iPhone|iPad/.test(navigator.platform || ua) ? "mac" : /Win/.test(navigator.platform || ua) ? "windows" : "linux";
   root.dataset.platform = platform;
+  root.dataset.shell = "__TAURI_INTERNALS__" in window ? "desktop" : "web";
   var settings = {};
   try {
     var raw = localStorage.getItem("margin:prefs");

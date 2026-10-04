@@ -164,7 +164,7 @@ kbd {
 .app[data-sidebar="closed"] .tb-left {
   width: auto;
 }
-[data-platform="mac"] .tb-left {
+[data-platform="mac"][data-shell="desktop"] .tb-left {
   padding-left: 84px;
 }
 .app[data-fullscreen="true"] .tb-left {

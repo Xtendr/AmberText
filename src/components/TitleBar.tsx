@@ -38,8 +38,7 @@ function AppMenuButton() {
       item("palette", "Command palette…"),
       item("settings", "Settings…"),
       item("welcome", "Welcome guide"),
-      { separator: true },
-      { label: "Quit Margin", shortcut: "Alt+F4", run: () => void win.close() },
+      ...(isTauri ? [{ separator: true as const }, { label: "Quit Margin", shortcut: "Alt+F4", run: () => void win.close() }] : []),
     ]);
     const unsub = useStore.subscribe((s) => {
       if (!s.contextMenu) {
@@ -234,7 +233,7 @@ export function TitleBar() {
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="tb-left" data-tauri-drag-region>
-        {!isMac && <AppMenuButton />}
+        {(!isMac || !isTauri) && <AppMenuButton />}
         <span className="tb-left-spacer" data-tauri-drag-region />
         <button
           className="icon-btn fade-on-type"
@@ -258,7 +257,7 @@ export function TitleBar() {
         >
           <Search size={16} strokeWidth={1.9} />
         </button>
-        {!isMac && !fullscreen && <WindowControls />}
+        {!isMac && isTauri && !fullscreen && <WindowControls />}
       </div>
     </header>
   );
