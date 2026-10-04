@@ -41,7 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   accent: "vermilion",
   material: true,
-  font: "serif",
+  font: "sans",
   fontSize: 18,
   lineHeight: 1.7,
   measure: 70,
@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   typewriter: false,
   spellcheck: true,
   autosave: true,
-  quietChrome: true,
+  quietChrome: false,
   viewMode: "write",
   sidebarOpen: true,
   sidebarTab: "files",
@@ -199,7 +199,12 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "margin:prefs",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as Partial<AppState>;
+        if (version < 2 && p.settings) p.settings = { ...p.settings, font: "sans", quietChrome: false };
+        return p as AppState;
+      },
       partialize: (s) => ({
         settings: s.settings,
         recentFiles: s.recentFiles,

@@ -32,6 +32,7 @@ import { followLink, insertImageFiles, pasteImage, pickImages, updateContent } f
 import { aiFlashField, aiTargetField } from "./aiInline";
 import { htmlToMarkdown, isConvertibleHtml } from "../lib/htmlToMarkdown";
 import { smartEditing } from "./smartEdit";
+import { Highlight } from "./mdExtensions";
 
 const docIdFacet = Facet.define<string, string | null>({ combine: (v) => v[0] ?? null });
 
@@ -118,7 +119,7 @@ const baseExtensions: Extension[] = [
   highlightSpecialChars(),
   EditorView.lineWrapping,
   EditorState.allowMultipleSelections.of(true),
-  markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
+  markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true, extensions: [Highlight] }),
   syntaxHighlighting(marginHighlight),
   search({ top: true, createPanel: createFindPanel }),
   slashCommands(),

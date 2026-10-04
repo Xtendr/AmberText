@@ -3,7 +3,7 @@ import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Extens
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import katex from "katex";
-import { renderFragment } from "../lib/markdown";
+import { escapeHtml, renderFragment, splitFrontmatter } from "../lib/markdown";
 import { cachedMermaid, renderMermaid } from "../lib/mermaid";
 import { toggleTaskAt } from "./commands";
 
@@ -204,15 +204,16 @@ class ImageWidget extends WidgetType {
   constructor(
     readonly src: string,
     readonly alt: string,
+    readonly linked = false,
   ) {
     super();
   }
   eq(o: ImageWidget) {
-    return o.src === this.src && o.alt === this.alt;
+    return o.src === this.src && o.alt === this.alt && o.linked === this.linked;
   }
   toDOM(view: EditorView) {
     const wrap = document.createElement("span");
-    wrap.className = "cm-image";
+    wrap.className = this.linked ? "cm-image is-linked" : "cm-image";
     const img = document.createElement("img");
     img.src = this.src;
     img.alt = this.alt;
@@ -237,6 +238,37 @@ class ImageWidget extends WidgetType {
   }
 }
 
+const INLINE_TAGS = new Set(["kbd", "sub", "sup", "mark", "u", "ins", "del", "s", "b", "strong", "i", "em", "small", "code"]);
+/** `$x$` — no space just inside the dollars, and no digit right after the closing one (so "$5 and $10" stays text). */
+const INLINE_MATH = /(^|[^\\$])\$(?![\s$])((?:\\.|[^$\\\n])+?)(?<![\s\\])\$(?![\d$])/g;
+
+class InlineMathWidget extends WidgetType {
+  constructor(readonly tex: string) {
+    super();
+  }
+  eq(o: InlineMathWidget) {
+    return o.tex === this.tex;
+  }
+  toDOM(view: EditorView) {
+    const el = document.createElement("span");
+    el.className = "cm-math-inline";
+    try {
+      el.innerHTML = katex.renderToString(this.tex, { throwOnError: false });
+    } catch {
+      el.textContent = this.tex;
+    }
+    el.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      view.dispatch({ selection: { anchor: view.posAtDOM(el) + 1 } });
+      view.focus();
+    });
+    return el;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Inline decorations (visible ranges only)                            */
 /* ------------------------------------------------------------------ */
@@ -253,12 +285,28 @@ function buildInline(view: EditorView): DecorationSet {
     return !!b && !linesTouch(state, b.from, b.to);
   };
 
-  if (fmEnd > 0) {
+  if (fmEnd > 0 && !replacedBlock(0)) {
     for (let n = 1; doc.line(n).to <= fmEnd; n++) {
       out.push(lineDeco(n === 1 || doc.line(n).to === fmEnd ? "cm-frontmatter cm-frontmatter-fence" : "cm-frontmatter").range(doc.line(n).from));
       if (n === doc.lines) break;
     }
   }
+
+  const linkedImages = new Set<number>();
+  const styledTags = new Set<number>();
+  const inlineMath = (para: SyntaxNode, acc: Range<Decoration>[]) => {
+    const text = doc.sliceString(para.from, para.to);
+    if (!text.includes("$")) return;
+    const code: [number, number][] = [];
+    tree.iterate({ from: para.from, to: para.to, enter: (c) => void (c.name === "InlineCode" && code.push([c.from, c.to])) });
+    for (const m of text.matchAll(INLINE_MATH)) {
+      const from = para.from + m.index + m[1].length;
+      const to = from + m[0].length - m[1].length;
+      if (code.some(([a, b]) => a < to && b > from)) continue;
+      if (touches(state, from, to)) acc.push(mark("cm-math-inline-src").range(from, to));
+      else acc.push(Decoration.replace({ widget: new InlineMathWidget(m[2]) }).range(from, to));
+    }
+  };
 
   const eachLine = (from: number, to: number, fn: (lineFrom: number, n: number, first: number, last: number) => void) => {
     const first = doc.lineAt(from).number;
@@ -307,15 +355,26 @@ function buildInline(view: EditorView): DecorationSet {
           case "Emphasis":
           case "StrongEmphasis":
           case "Strikethrough":
+          case "Highlight":
           case "InlineCode": {
             if (name === "InlineCode") out.push(mark("cm-inline-code").range(ref.from, ref.to));
-            const markName = name === "Strikethrough" ? "StrikethroughMark" : name === "InlineCode" ? "CodeMark" : "EmphasisMark";
+            if (name === "Highlight") out.push(mark("cm-highlight").range(ref.from, ref.to));
+            const markName = name === "Strikethrough" ? "StrikethroughMark" : name === "InlineCode" ? "CodeMark" : name === "Highlight" ? "HighlightMark" : "EmphasisMark";
             const active = touches(state, ref.from, ref.to);
             for (const m of children(node, markName)) out.push((active ? mark("cm-md-mark") : hide).range(m.from, m.to));
             return;
           }
           case "Link":
           case "Autolink": {
+            const image = node.getChild("Image");
+            if (image && image.from === ref.from + 1) {
+              // Linked image, e.g. a README badge: show the image, keep the link source hidden.
+              const active = touches(state, ref.from, ref.to);
+              out.push((active ? mark("cm-md-mark") : hide).range(ref.from, image.from));
+              out.push((active ? mark("cm-md-mark cm-link-dest") : hide).range(image.to, ref.to));
+              linkedImages.add(image.from);
+              return;
+            }
             if (doc.sliceString(ref.from, ref.from + 2) === "[!") return false;
             const marks = children(node, "LinkMark");
             const active = touches(state, ref.from, ref.to);
@@ -324,6 +383,14 @@ function buildInline(view: EditorView): DecorationSet {
               if (url) out.push(mark("cm-link").range(url.from, url.to));
               if (!active) for (const m of marks) out.push(hide.range(m.from, m.to));
               return false;
+            }
+            if (doc.sliceString(ref.from, ref.from + 2) === "[^" && !node.getChild("URL")) {
+              out.push(mark("cm-footnote-ref").range(ref.from, ref.to));
+              if (!active && marks.length >= 2) {
+                out.push(hide.range(ref.from, ref.from + 2));
+                out.push(hide.range(marks[marks.length - 1].from, marks[marks.length - 1].to));
+              }
+              return;
             }
             if (marks.length >= 2 && marks[1].from > marks[0].to) {
               out.push(mark("cm-link").range(marks[0].to, marks[1].from));
@@ -345,7 +412,7 @@ function buildInline(view: EditorView): DecorationSet {
             if (!active && url && sameLine && marks.length >= 2) {
               const src = doc.sliceString(url.from, url.to).replace(/^<|>$/g, "");
               const alt = doc.sliceString(marks[0].to, marks[1].from);
-              out.push(Decoration.replace({ widget: new ImageWidget(imageResolver(src), alt) }).range(ref.from, ref.to));
+              out.push(Decoration.replace({ widget: new ImageWidget(imageResolver(src), alt, linkedImages.has(ref.from)) }).range(ref.from, ref.to));
             } else {
               out.push(mark("cm-image-src").range(ref.from, ref.to));
             }
@@ -486,10 +553,36 @@ function buildInline(view: EditorView): DecorationSet {
               eachLine(ref.from, ref.to, (lf) => out.push(lineDeco("cm-math-src").range(lf)));
               return false;
             }
+            inlineMath(node, out);
             return;
           }
-          case "HTMLTag":
+          case "HTMLTag": {
+            if (styledTags.has(ref.from)) return false;
+            const open = /^<([a-z]+)(\s[^>]*)?>$/i.exec(doc.sliceString(ref.from, ref.to));
+            const tag = open?.[1].toLowerCase();
+            if (tag && INLINE_TAGS.has(tag)) {
+              let depth = 0;
+              for (let sib = node.nextSibling; sib; sib = sib.nextSibling) {
+                if (sib.name !== "HTMLTag") continue;
+                const t = doc.sliceString(sib.from, sib.to).toLowerCase();
+                if (t.startsWith(`<${tag}`) && /^<[a-z]+[\s>]/.test(t)) depth++;
+                else if (t === `</${tag}>` && depth-- === 0) {
+                  styledTags.add(sib.from);
+                  const active = touches(state, ref.from, sib.to);
+                  out.push((active ? mark("cm-html") : hide).range(ref.from, ref.to));
+                  out.push((active ? mark("cm-html") : hide).range(sib.from, sib.to));
+                  if (ref.to < sib.from) out.push(mark(`cm-tag-${tag}`).range(ref.to, sib.from));
+                  return false;
+                }
+              }
+            }
+            out.push(mark("cm-html").range(ref.from, ref.to));
+            return false;
+          }
           case "HTMLBlock":
+            if (replacedBlock(ref.from)) return false;
+            out.push(mark("cm-html").range(ref.from, ref.to));
+            return false;
           case "CommentBlock":
           case "Comment":
             out.push(mark("cm-html").range(ref.from, ref.to));
@@ -534,7 +627,7 @@ const inlinePlugin = ViewPlugin.fromClass(
 /* ------------------------------------------------------------------ */
 
 interface BlockRange {
-  kind: "table" | "math" | "mermaid";
+  kind: "table" | "math" | "mermaid" | "html" | "frontmatter";
   from: number;
   to: number;
   source: string;
@@ -551,7 +644,7 @@ abstract class BlockWidget extends WidgetType {
     const el = document.createElement("div");
     el.className = `cm-block-widget ${cls}`;
     el.addEventListener("mousedown", (e) => {
-      if ((e.target as HTMLElement).closest("a")) return;
+      if ((e.target as HTMLElement).closest("a, summary")) return;
       e.preventDefault();
       editAt(view, el, lineOffset);
     });
@@ -572,6 +665,41 @@ class TableWidget extends BlockWidget {
   toDOM(view: EditorView) {
     const el = this.shell(view, "cm-table-widget", 0);
     el.innerHTML = `<div class="cm-table-scroll prose">${renderFragment(this.source)}</div>`;
+    return el;
+  }
+}
+
+class HtmlWidget extends BlockWidget {
+  eq(o: HtmlWidget) {
+    return o.source === this.source;
+  }
+  get estimatedHeight() {
+    return this.lines * 30;
+  }
+  toDOM(view: EditorView) {
+    const el = this.shell(view, "cm-html-widget prose", 0);
+    el.innerHTML = renderFragment(this.source);
+    for (const img of el.querySelectorAll("img")) {
+      const src = img.getAttribute("src");
+      if (src) img.src = imageResolver(src);
+      img.addEventListener("load", () => view.requestMeasure());
+    }
+    for (const d of el.querySelectorAll("details")) d.addEventListener("toggle", () => view.requestMeasure());
+    return el;
+  }
+}
+
+class FrontmatterWidget extends BlockWidget {
+  eq(o: FrontmatterWidget) {
+    return o.source === this.source;
+  }
+  get estimatedHeight() {
+    return this.lines * 22;
+  }
+  toDOM(view: EditorView) {
+    const el = this.shell(view, "cm-frontmatter-widget prose", 1);
+    const data = splitFrontmatter(this.source + "\n")?.data ?? [];
+    el.innerHTML = `<dl class="frontmatter">${data.map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join("")}</dl>`;
     return el;
   }
 }
@@ -636,6 +764,10 @@ function collectBlocks(state: EditorState): BlockRange[] {
   const out: BlockRange[] = [];
   const doc = state.doc;
   const fmEnd = frontmatterEnd(state);
+  if (fmEnd > 0) {
+    const source = doc.sliceString(0, fmEnd);
+    if (splitFrontmatter(source + "\n")?.data.length) out.push({ kind: "frontmatter", from: 0, to: fmEnd, source });
+  }
   for (let node = syntaxTree(state).topNode.firstChild; node; node = node.nextSibling) {
     if (node.from < fmEnd) continue;
     if (node.name === "Table") {
@@ -647,6 +779,21 @@ function collectBlocks(state: EditorState): BlockRange[] {
       const text = node.getChild("CodeText");
       const source = text ? doc.sliceString(text.from, text.to) : "";
       if (source.trim()) out.push({ kind: "mermaid", from: node.from, to: node.to, source });
+    } else if (node.name === "HTMLBlock") {
+      const from = node.from;
+      const own = doc.sliceString(node.from, node.to);
+      if (/^\s*(<\/[a-z][\w-]*\s*>\s*)+$/i.test(own)) continue;
+      // A container like <details> often wraps Markdown separated by blank lines; take it whole.
+      const tag = /^\s*<([a-z][\w-]*)/i.exec(own)?.[1].toLowerCase();
+      if (tag && !new RegExp(`</${tag}\\s*>`, "i").test(own)) {
+        for (let sib = node.nextSibling; sib && sib.from - from < 20000; sib = sib.nextSibling) {
+          if (sib.name === "HTMLBlock" && new RegExp(`</${tag}\\s*>\\s*$`, "i").test(doc.sliceString(sib.from, sib.to))) {
+            node = sib;
+            break;
+          }
+        }
+      }
+      out.push({ kind: "html", from, to: node.to, source: doc.sliceString(from, node.to) });
     } else if (node.name === "Paragraph") {
       const text = doc.sliceString(node.from, node.to);
       const m = /^\$\$([\s\S]+?)\$\$\s*$/.exec(text);
@@ -669,7 +816,11 @@ function decorateBlocks(state: EditorState, ranges: BlockRange[]): DecorationSet
         ? new TableWidget(r.source, lines)
         : r.kind === "math"
           ? new MathWidget(r.source, lines)
-          : new MermaidWidget(r.source, lines, dark);
+          : r.kind === "html"
+            ? new HtmlWidget(r.source, lines)
+            : r.kind === "frontmatter"
+              ? new FrontmatterWidget(r.source, lines)
+              : new MermaidWidget(r.source, lines, dark);
     builder.add(from, to, Decoration.replace({ widget, block: true }));
   }
   return builder.finish();

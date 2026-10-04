@@ -73,6 +73,9 @@
   --popover-border: rgba(40, 32, 18, 0.1);
   --shadow-pop: 0 0 0 0.5px rgba(40, 32, 18, 0.08), 0 2px 6px -1px rgba(40, 32, 18, 0.06), 0 18px 48px -12px rgba(40, 32, 18, 0.22);
   --shadow-sm: 0 0 0 0.5px rgba(40, 32, 18, 0.1), 0 1px 2px rgba(40, 32, 18, 0.06);
+  --raised: #ffffff;
+  --raised-hover: #f8f7f3;
+  --shadow-raised: 0 0 0 0.5px rgba(40, 32, 18, 0.12), 0 1px 2px rgba(40, 32, 18, 0.07);
   --scrim: rgba(30, 26, 18, 0.18);
 
   --inverse: #1f1e1b;
@@ -109,10 +112,10 @@
   --sheet-border: rgba(255, 250, 240, 0.07);
   --sheet-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 30px -12px rgba(0, 0, 0, 0.5);
 
-  --text: #ebe9e4;
-  --text-2: #aeaaa1;
-  --text-3: #7e7b74;
-  --text-4: #57554f;
+  --text: #e7e4dd;
+  --text-2: #b4b0a7;
+  --text-3: #8f8b83;
+  --text-4: #64615b;
   --text-on-accent: #1a1a19;
 
   --line: rgba(255, 250, 240, 0.075);
@@ -129,6 +132,9 @@
   --popover-border: rgba(255, 250, 240, 0.09);
   --shadow-pop: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 2px 8px -1px rgba(0, 0, 0, 0.3), 0 24px 56px -12px rgba(0, 0, 0, 0.6);
   --shadow-sm: 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --raised: #383836;
+  --raised-hover: #41413f;
+  --shadow-raised: inset 0 0.5px 0 rgba(255, 250, 240, 0.09), 0 1px 2px rgba(0, 0, 0, 0.25);
   --scrim: rgba(0, 0, 0, 0.35);
 
   --inverse: #f1eee8;
@@ -141,12 +147,12 @@
   --tok-keyword: #f0936b;
   --tok-string: #94cf9f;
   --tok-number: #c9a2f2;
-  --tok-comment: #6f6c65;
+  --tok-comment: #8a867e;
   --tok-function: #7cb8ec;
   --tok-type: #e6c26e;
   --tok-property: #c9c5bc;
   --tok-tag: #f08c74;
-  --tok-operator: #a5a198;
+  --tok-operator: #aaa69d;
 
   --callout-note: #6ea2f0;
   --callout-tip: #68c08e;
@@ -176,7 +182,13 @@
   --accent-line: color-mix(in oklab, var(--accent) 40%, transparent);
   --accent-soft-solid: color-mix(in oklab, var(--accent) 14%, var(--sheet));
   --selection: color-mix(in oklab, var(--accent) 22%, transparent);
+  --highlight: color-mix(in oklab, var(--accent) 20%, transparent);
   --focus-ring: 0 0 0 2px var(--sheet), 0 0 0 4px color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+[data-theme="dark"] {
+  --selection: color-mix(in oklab, var(--accent) 32%, transparent);
+  --highlight: color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
 /* Window material: let Mica / vibrancy show through the chrome. */

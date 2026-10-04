@@ -19,7 +19,7 @@
 .cm-editor .cm-scroller {
   font-family: inherit;
   line-height: var(--writing-lh);
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
 }
 .cm-editor .cm-content {
@@ -135,6 +135,66 @@
   font-size: 0.84em;
   color: var(--text-3);
 }
+.cm-highlight,
+.cm-tag-mark {
+  background: var(--highlight);
+  border-radius: 3px;
+  padding: 0.05em 0;
+}
+.cm-tag-kbd {
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  padding: 0.15em 0.45em;
+  border-radius: 5px;
+  background: var(--surface-2);
+  box-shadow: inset 0 -1px 0 var(--line-strong), inset 0 0 0 0.5px var(--line);
+}
+.cm-tag-sub,
+.cm-tag-sup {
+  font-size: 0.75em;
+  vertical-align: sub;
+  line-height: 0;
+}
+.cm-tag-sup {
+  vertical-align: super;
+}
+.cm-tag-u,
+.cm-tag-ins {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.cm-tag-del,
+.cm-tag-s {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+.cm-tag-b,
+.cm-tag-strong {
+  font-weight: 650;
+}
+.cm-tag-i,
+.cm-tag-em {
+  font-style: italic;
+}
+.cm-tag-small {
+  font-size: 0.85em;
+}
+.cm-tag-code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--code-bg);
+  border-radius: 5px;
+  padding: 0.14em 0.34em;
+}
+.cm-math-inline {
+  cursor: pointer;
+  padding: 0 0.1em;
+}
+.cm-math-inline-src {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  color: var(--text-2);
+}
 
 /* ---------- Headings ---------- */
 
@@ -198,6 +258,9 @@
 }
 .cm-quote:not(.cm-callout) {
   font-style: italic;
+}
+.cm-callout .tok-quote {
+  color: inherit;
 }
 .cm-callout {
   --c: var(--callout-note);
@@ -480,6 +543,14 @@
   border-radius: 8px;
   box-shadow: 0 0 0 0.5px var(--line);
 }
+.cm-image.is-linked {
+  padding: 0;
+  vertical-align: middle;
+}
+.cm-image.is-linked img {
+  border-radius: 3px;
+  box-shadow: none;
+}
 .cm-image.is-broken {
   font-family: var(--font-ui);
   font-size: 0.72em;
@@ -535,6 +606,19 @@
 }
 .cm-table-scroll table {
   margin: 0 !important;
+}
+.cm-html-widget > :first-child {
+  margin-top: 0;
+}
+.cm-html-widget > :last-child {
+  margin-bottom: 0;
+}
+.cm-html-widget img {
+  max-width: 100%;
+  vertical-align: middle;
+}
+.cm-html-widget summary {
+  cursor: pointer;
 }
 .cm-math-widget {
   text-align: center;
@@ -840,4 +924,14 @@ li[aria-selected] .slash-icon {
 }
 .cm-editor .cm-snippetFieldPosition {
   border-left: 1.5px solid var(--accent-line);
+}
+
+.cm-footnote-ref {
+  font-size: 0.72em;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--accent);
+}
+.cm-frontmatter-widget .frontmatter {
+  margin: 0;
 }

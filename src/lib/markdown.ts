@@ -1,5 +1,6 @@
 import MarkdownIt from "markdown-it";
 import footnote from "markdown-it-footnote";
+import markPlugin from "markdown-it-mark";
 import katexPlugin from "@vscode/markdown-it-katex";
 import hljs from "highlight.js/lib/common";
 import DOMPurify from "dompurify";
@@ -143,6 +144,7 @@ md.core.ruler.push("heading_ids", (state) => {
 });
 
 md.use(footnote);
+md.use(((markPlugin as unknown as { default?: typeof markPlugin }).default ?? markPlugin) as typeof markPlugin);
 // CJS package: the dev server hands us the module object, the production build the function.
 const katex = ((katexPlugin as unknown as { default?: typeof katexPlugin }).default ?? katexPlugin) as typeof katexPlugin;
 md.use(katex, { enableFencedBlocks: true, throwOnError: false });

@@ -1,6 +1,13 @@
 import proseCss from "../styles/prose.css?raw";
 import { escapeHtml, renderMarkdown } from "./markdown";
 import { renderMermaid } from "./mermaid";
+import { getState } from "../state/store";
+
+const EXPORT_FONTS = {
+  serif: `"Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif`,
+  sans: `"Inter", "Segoe UI", -apple-system, system-ui, sans-serif`,
+  mono: `"JetBrains Mono", "Cascadia Code", ui-monospace, Consolas, monospace`,
+};
 
 const EXPORT_VARS = `
 :root {
@@ -9,7 +16,6 @@ const EXPORT_VARS = `
   --surface-1: #faf9f6; --surface-2: #f3f1ec; --sheet: #ffffff;
   --accent: #d9512c; --accent-soft: rgba(217,81,44,.12);
   --code-bg: #f4f2ed;
-  --font-writing: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-ui: "Inter", "Segoe UI", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, Consolas, monospace;
   --writing-size: 18px; --writing-lh: 1.7;
@@ -49,6 +55,7 @@ export async function buildStandaloneHtml(content: string, title: string, baseDi
 <meta name="generator" content="Margin">
 <title>${escapeHtml(title)}</title>
 ${katex}<style>${EXPORT_VARS}
+:root { --font-writing: ${EXPORT_FONTS[getState().settings.font]}; }
 ${proseCss}</style>
 </head>
 <body>

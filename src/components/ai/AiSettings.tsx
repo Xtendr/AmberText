@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, HardDrive, Lock, Server, Sparkles } from "lucide-react";
+import { FolderOpen, HardDrive, Server } from "lucide-react";
 import { getState, useStore } from "../../state/store";
 import { chat, refreshAi, stopServer, useAi } from "../../ai/engine";
 import { fsApi, isMac, isTauri, fileManagerName } from "../../lib/platform";
@@ -46,26 +46,18 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
   return (
     <>
       <div className="set-group">
-        <div className="ai-hero">
-          <span className="ai-hero-mark">
-            <Sparkles size={16} strokeWidth={1.8} />
-          </span>
-          <div>
-            <div className="ai-hero-title">Writing intelligence</div>
-            <div className="ai-hero-text">
-              Select text and press <kbd>{isMac ? "⌘" : "Ctrl"}</kbd>
-              <kbd>J</kbd> to improve, shorten, translate or explain it. Ask about the whole document from the command palette.
-            </div>
-          </div>
-        </div>
-        <div className="ai-privacy">
-          <Lock size={12} strokeWidth={2.2} />
-          <span>Runs entirely on your computer. Your writing is never uploaded, and there's no account or subscription.</span>
-        </div>
+        <h3>Assistant</h3>
         <div className="set-row">
           <div className="set-row-text">
             <div className="set-label">Show AI in the editor</div>
-            <div className="set-desc">Adds “Ask AI” to the selection toolbar and AI commands to the palette.</div>
+            <div className="set-desc">
+              Select text and press{" "}
+              <span className="kbds">
+                <kbd>{isMac ? "⌘" : "Ctrl"}</kbd>
+                <kbd>J</kbd>
+              </span>{" "}
+              to rewrite, shorten, translate or explain it. Ask about the whole document from the command palette.
+            </div>
           </div>
           <Switch value={s.aiEnabled} onChange={(v) => set({ aiEnabled: v })} label="Show AI in the editor" />
         </div>
@@ -123,6 +115,26 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
           </>
         )}
       </div>
+
+      {s.aiProvider === "local" && (
+        <div className="set-group">
+          <h3>Privacy</h3>
+          <dl className="ai-facts">
+            <div>
+              <dt>Runs on</dt>
+              <dd>This computer</dd>
+            </div>
+            <div>
+              <dt>Text sent online</dt>
+              <dd>Never</dd>
+            </div>
+            <div>
+              <dt>Account</dt>
+              <dd>Not required</dd>
+            </div>
+          </dl>
+        </div>
+      )}
     </>
   );
 }

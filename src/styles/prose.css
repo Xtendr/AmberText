@@ -90,7 +90,7 @@
   text-decoration-color: var(--text-3);
 }
 .prose mark {
-  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  background: var(--highlight);
   color: inherit;
   border-radius: 3px;
   padding: 0 0.15em;
