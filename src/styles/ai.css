@@ -761,7 +761,7 @@
   color: var(--text);
   font-weight: 550;
 }
-.seg {
+.ai-provider.seg {
   display: flex;
   padding: 3px;
   gap: 2px;
@@ -769,7 +769,7 @@
   background: var(--surface-2);
   margin-bottom: 12px;
 }
-.seg button {
+.ai-provider.seg button {
   flex: 1;
   height: 28px;
   border-radius: 7px;
@@ -781,7 +781,7 @@
   font-weight: 550;
   color: var(--text-2);
 }
-.seg button.is-active {
+.ai-provider.seg button.is-active {
   background: var(--raised);
   color: var(--text);
   box-shadow: var(--shadow-raised);
