@@ -13,6 +13,8 @@ const ua = navigator.userAgent;
 const plat = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || ua;
 export const isMac = /Mac|iPhone|iPad/i.test(plat);
 export const isWindows = /Win/i.test(plat);
+/** How we refer to the user's machine in copy, e.g. "Runs on this Mac". */
+export const deviceName = isMac ? "this Mac" : isWindows ? "this PC" : "this computer";
 export const platformName: "mac" | "windows" | "linux" = isMac ? "mac" : isWindows ? "windows" : "linux";
 export const fileManagerName = isMac ? "Finder" : isWindows ? "File Explorer" : "file manager";
 

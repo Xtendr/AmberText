@@ -79,7 +79,7 @@ export function isInstalled(m: ModelInfo, installed = useAi.getState().installed
 /** The model a request would use right now, or null when AI isn't set up. */
 export function activeModelLabel(): string | null {
   const s = getState().settings;
-  if (s.aiProvider === "custom") return s.aiEndpoint.trim() ? s.aiEndpointModel.trim() || "Local server" : null;
+  if (s.aiProvider === "custom") return s.aiEndpoint.trim() ? s.aiEndpointModel.trim() || "Your own server" : null;
   const m = modelById(s.aiModel);
   return m && isInstalled(m) ? m.model : null;
 }

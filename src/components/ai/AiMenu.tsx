@@ -6,6 +6,7 @@ import { closeAiMenu, runAction, runCustom, useAiSession } from "../../ai/sessio
 import { DOCUMENT_ACTIONS, SELECTION_ACTIONS, SUBMENUS, type AiAction } from "../../ai/actions";
 import { activeModelLabel } from "../../ai/engine";
 import { fuzzy, highlightParts } from "../../lib/fuzzy";
+import { deviceName } from "../../lib/platform";
 import { useStore } from "../../state/store";
 
 interface Entry {
@@ -38,7 +39,7 @@ export function AiMenu() {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
-  const providerLabel = useStore((s) => (s.settings.aiProvider === "local" ? "On this computer" : "Your local server"));
+  const providerLabel = useStore((s) => (s.settings.aiProvider === "local" ? `On ${deviceName}` : "Your own server"));
 
   useEffect(() => {
     setQuery(menu?.initial ?? "");

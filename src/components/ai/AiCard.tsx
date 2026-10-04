@@ -8,7 +8,7 @@ import { activeModelLabel, useAi } from "../../ai/engine";
 import { parseTitles } from "../../ai/actions";
 import { changeRatio, diffWords } from "../../ai/diff";
 import { renderFragment } from "../../lib/markdown";
-import { isTauri } from "../../lib/platform";
+import { deviceName, isTauri } from "../../lib/platform";
 import { setState, useStore } from "../../state/store";
 import { modelById } from "../../ai/models";
 import { InstallStatus, ModelPicker, preferredTier } from "./ModelPicker";
@@ -34,11 +34,11 @@ function Setup() {
     return (
       <div className="ai-setup">
         <p className="ai-setup-lead">
-          Local models run in the Margin desktop app. You can also connect a model server you already run — like Ollama or LM Studio.
+          Models are downloaded and run by the Margin desktop app. In this preview, connect a model server you already run, like Ollama or LM Studio.
         </p>
         <div className="ai-actions">
           <button className="btn primary sm" onClick={openSettings}>
-            Connect a local server
+            Connect your own server
           </button>
         </div>
       </div>
@@ -60,7 +60,7 @@ function Setup() {
               Download & continue
             </button>
             <button className="btn ghost sm" onClick={openSettings}>
-              Use a local server instead
+              Use your own server instead
             </button>
           </div>
         </>
@@ -176,7 +176,7 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
         </span>
         <span className="ai-title">{s.status === "setup" ? "Set up writing intelligence" : (s.action.verb ?? s.action.label)}</span>
         {label && s.status !== "setup" && (
-          <span className="ai-meta" data-tip={provider === "local" ? "Runs on this computer" : "Your local server"}>
+          <span className="ai-meta" data-tip={provider === "local" ? `Runs on ${deviceName}` : "Your own server"}>
             <Lock size={10} strokeWidth={2.4} />
             {label}
           </span>

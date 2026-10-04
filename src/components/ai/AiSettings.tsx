@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { FolderOpen, HardDrive, Server } from "lucide-react";
 import { getState, useStore } from "../../state/store";
 import { chat, refreshAi, stopServer, useAi } from "../../ai/engine";
-import { fsApi, isMac, isTauri, fileManagerName } from "../../lib/platform";
+import { deviceName, fsApi, isMac, isTauri, fileManagerName } from "../../lib/platform";
 import { invoke } from "@tauri-apps/api/core";
 import { ModelPicker } from "./ModelPicker";
 
@@ -67,17 +67,17 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
         <h3>Model</h3>
         <div className="ai-provider seg" role="radiogroup" aria-label="Model source">
           <button role="radio" aria-checked={s.aiProvider === "local"} className={s.aiProvider === "local" ? "is-active" : ""} onClick={() => set({ aiProvider: "local" })}>
-            <HardDrive size={13} /> Built-in
+            <HardDrive size={13} /> On {deviceName}
           </button>
           <button role="radio" aria-checked={s.aiProvider === "custom"} className={s.aiProvider === "custom" ? "is-active" : ""} onClick={() => set({ aiProvider: "custom" })}>
-            <Server size={13} /> Local server
+            <Server size={13} /> Your own server
           </button>
         </div>
 
         {s.aiProvider === "local" ? (
           supported ? (
             <>
-              <p className="set-desc ai-para">Download one model to get started. Standard is the best fit for most computers; you can switch or remove models any time.</p>
+              <p className="set-desc ai-para">Download a model once and Margin runs it on {deviceName}, offline. Standard is the best fit for most computers; you can switch or remove models any time.</p>
               <ModelPicker value={s.aiModel} onChange={(t) => set({ aiModel: t })} manage />
               {error && <p className="ai-error-text">{error}</p>}
               <div className="ai-row-links">
@@ -95,7 +95,14 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
               </p>
             </>
           ) : (
-            <p className="set-desc ai-para">Built-in models run in the Margin desktop app. Connect a local server (Ollama, LM Studio, llama.cpp) to try AI here.</p>
+            <div className="ai-browser-note">
+              <p>
+                Models are downloaded and run by the Margin desktop app. This browser preview can't run them, but you can connect your own server to try AI here.
+              </p>
+              <button className="btn sm" onClick={() => set({ aiProvider: "custom" })}>
+                Use your own server
+              </button>
+            </div>
           )
         ) : (
           <>
@@ -122,7 +129,7 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
           <dl className="ai-facts">
             <div>
               <dt>Runs on</dt>
-              <dd>This computer</dd>
+              <dd>{deviceName[0].toUpperCase() + deviceName.slice(1)}</dd>
             </div>
             <div>
               <dt>Text sent online</dt>
