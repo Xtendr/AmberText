@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { undo } from "@codemirror/commands";
 import type { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { bridge } from "../editor/bridge";
@@ -322,7 +323,7 @@ export function accept(mode: AcceptMode = "replace") {
     if (state.doc.toString().endsWith("\n") && !next.endsWith("\n")) next += "\n";
     v.dispatch({ changes: { from: 0, to: state.doc.length, insert: next }, userEvent: "input.ai", selection: { anchor: 0 }, scrollIntoView: true });
     finish(v);
-    toast("Document updated — undo to restore the original", "success", { label: "Undo", run: () => void import("@codemirror/commands").then(({ undo }) => undo(v)) });
+    toast("Document updated — undo to restore the original", "success", { label: "Undo", run: () => undo(v) });
     return;
   }
 

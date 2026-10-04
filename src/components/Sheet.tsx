@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, CircleAlert, Command, FileText, FolderOpen, Lightbulb, PenLine, Plus, Target, Zap } from "lucide-react";
 import { isMac } from "../lib/platform";
 import { Editor } from "../editor/Editor";
-import { activeDoc, goalKey, isDirty, setState, useStore } from "../state/store";
+import { activeDoc, getState, goalKey, isDirty, setState, useStore } from "../state/store";
 import { displayName, newDoc, openFileDialog, openFolderDialog, openPath, reloadFromDisk, saveActive, setViewMode, setWordGoal } from "../state/actions";
 import { countWords, formatCount, readingMinutes, relativeTime } from "../lib/text";
 import { basename, dirname, stripExt } from "../lib/paths";
@@ -24,8 +24,28 @@ function Keys({ id }: { id: string }) {
   );
 }
 
+const mod = isMac ? "⌘" : "Ctrl";
+const TIPS = [
+  <>
+    Type <kbd>/</kbd> on an empty line to insert tables, diagrams, callouts and more.
+  </>,
+  <>
+    Select a sentence and press <kbd>{mod}</kbd>
+    <kbd>J</kbd> to improve, shorten or translate it — privately, on this computer.
+  </>,
+  <>Paste from a web page or Google Docs and it arrives as clean Markdown.</>,
+  <>
+    In a table, <kbd>Tab</kbd> moves between cells and keeps the columns tidy.
+  </>,
+  <>Set a word goal from the status bar and watch the ring fill as you write.</>,
+];
+
 function Welcome() {
   const recent = useStore((s) => s.recentFiles);
+  const [tip] = useState(() => {
+    const tips = getState().settings.aiEnabled ? TIPS : TIPS.filter((_, i) => i !== 1);
+    return tips[Math.floor(Math.random() * tips.length)];
+  });
   return (
     <div className="welcome">
       <div className="welcome-inner">
@@ -84,9 +104,7 @@ function Welcome() {
         )}
         <p className="welcome-tip">
           <Lightbulb size={13} />
-          <span>
-            Type <kbd>/</kbd> on an empty line to insert tables, diagrams, callouts and more.
-          </span>
+          <span>{tip}</span>
         </p>
       </div>
     </div>
