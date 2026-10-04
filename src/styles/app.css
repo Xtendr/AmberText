@@ -940,6 +940,47 @@ button.status-item:hover {
 .status-spacer {
   flex: 1;
 }
+.goal-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.statusbar:hover .goal-empty,
+.goal-empty:focus-within {
+  opacity: 1;
+}
+.status-goal svg {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.goal-track,
+.goal-fill {
+  fill: none;
+  stroke-width: 1.6;
+}
+.goal-track {
+  stroke: var(--line-strong, var(--text-4));
+  opacity: 0.6;
+}
+.goal-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s var(--ease-out, ease);
+}
+.goal-check {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(90deg);
+  transform-origin: 7px 7px;
+}
+.status-goal.is-done {
+  color: var(--text-2);
+}
 .save-dot {
   width: 6px;
   height: 6px;

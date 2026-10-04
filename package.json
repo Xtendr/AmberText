@@ -25,6 +25,7 @@
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/newsreader": "^5.3.0",
+    "@joplin/turndown-plugin-gfm": "^1.0.68",
     "@lezer/common": "^1.5.3",
     "@lezer/highlight": "^1.2.5",
     "@lezer/markdown": "^1.7.2",
@@ -41,6 +42,7 @@
     "mermaid": "^12.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "turndown": "^7.2.4",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -49,6 +51,7 @@
     "@types/markdown-it-footnote": "^3.0.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
     "playwright-core": "^1.63.0",
     "typescript": "^7.0.2",

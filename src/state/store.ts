@@ -138,6 +138,8 @@ export interface AppState {
   settings: Settings;
   recentFiles: string[];
   recentFolders: string[];
+  /** Word targets keyed by file path (or `draft:<id>` for unsaved documents). */
+  goals: Record<string, number>;
 
   docs: Doc[];
   activeId: string | null;
@@ -170,6 +172,7 @@ export const useStore = create<AppState>()(
       settings: DEFAULT_SETTINGS,
       recentFiles: [],
       recentFolders: [],
+      goals: {},
 
       docs: [],
       activeId: null,
@@ -201,6 +204,7 @@ export const useStore = create<AppState>()(
         settings: s.settings,
         recentFiles: s.recentFiles,
         recentFolders: s.recentFolders,
+        goals: s.goals,
         expanded: s.expanded,
       }),
       merge: (persisted, current) => {
@@ -221,6 +225,8 @@ export const setState = useStore.setState;
 export function activeDoc(s: AppState = getState()): Doc | null {
   return s.docs.find((d) => d.id === s.activeId) ?? null;
 }
+
+export const goalKey = (d: Doc) => d.path ?? `draft:${d.id}`;
 
 export function isDirty(d: Doc): boolean {
   return d.content !== d.savedContent;

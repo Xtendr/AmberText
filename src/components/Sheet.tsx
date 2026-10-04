@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CircleAlert, Command, FileText, FolderOpen, Lightbulb, PenLine, Plus, Zap } from "lucide-react";
+import { Check, CircleAlert, Command, FileText, FolderOpen, Lightbulb, PenLine, Plus, Target, Zap } from "lucide-react";
 import { isMac } from "../lib/platform";
 import { Editor } from "../editor/Editor";
-import { activeDoc, isDirty, setState, useStore } from "../state/store";
-import { displayName, newDoc, openFileDialog, openFolderDialog, openPath, reloadFromDisk, saveActive, setViewMode } from "../state/actions";
+import { activeDoc, goalKey, isDirty, setState, useStore } from "../state/store";
+import { displayName, newDoc, openFileDialog, openFolderDialog, openPath, reloadFromDisk, saveActive, setViewMode, setWordGoal } from "../state/actions";
 import { countWords, formatCount, readingMinutes, relativeTime } from "../lib/text";
 import { basename, dirname, stripExt } from "../lib/paths";
 import { commandById, formatKeys } from "../commands";
@@ -93,6 +93,45 @@ function Welcome() {
   );
 }
 
+function GoalButton({ words }: { words: number }) {
+  const goal = useStore((s) => {
+    const d = activeDoc(s);
+    return d ? s.goals[goalKey(d)] : undefined;
+  });
+  if (!goal) {
+    return (
+      <span className="goal-empty">
+        <span className="status-sep" />
+        <button className="status-item status-goal" onClick={() => void setWordGoal()} data-tip="Set a word goal">
+          <Target size={12} strokeWidth={2} />
+          Goal
+        </button>
+      </span>
+    );
+  }
+  const p = Math.min(1, words / goal);
+  const r = 5.25;
+  const c = 2 * Math.PI * r;
+  const done = p >= 1;
+  return (
+    <>
+    <span className="status-sep" />
+    <button
+      className={`status-item status-goal${done ? " is-done" : ""}`}
+      onClick={() => void setWordGoal()}
+      data-tip={done ? "Goal reached — nicely done" : `${formatCount(goal - words)} words to go`}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+        <circle cx="7" cy="7" r={r} className="goal-track" />
+        <circle cx="7" cy="7" r={r} className="goal-fill" strokeDasharray={c} strokeDashoffset={c * (1 - p)} />
+        {done && <path d="M4.6 7.2l1.6 1.6 3.2-3.4" className="goal-check" />}
+      </svg>
+      {Math.round(p * 100)}% of {formatCount(goal)}
+    </button>
+    </>
+  );
+}
+
 function StatusBar() {
   const doc = useStore(activeDoc);
   const cursor = useStore((s) => s.cursor);
@@ -142,6 +181,7 @@ function StatusBar() {
           <span className="status-item">{readingMinutes(words)} min read</span>
         </>
       )}
+      <GoalButton words={words} />
       <span className="status-spacer" />
       {mode !== "read" && (
         <>

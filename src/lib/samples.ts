@@ -9,7 +9,9 @@ Move your cursor into any styled text and its syntax gently reappears. Move away
 ## The essentials
 
 - Press **/** at the start of a line to insert headings, tables, diagrams and more
-- Select text to reveal the formatting toolbar
+- Select text to reveal the formatting toolbar — or type \`*\`, \`_\` or \`[\` to wrap it
+- Paste from a web page or Google Docs and it arrives as clean Markdown
+- In a table, **Tab** jumps between cells and tidies the columns as you go
 - Press **Ctrl P** to jump to any file, or **Ctrl K** for every command
 - Switch between **Write**, **Split** and **Read** in the title bar
 

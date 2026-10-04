@@ -29,6 +29,8 @@ import { fileSrc } from "../lib/platform";
 import { dirname, isExternalUrl, resolvePath } from "../lib/paths";
 import { followLink, insertImageFiles, pasteImage, pickImages, updateContent } from "../state/actions";
 import { aiFlashField, aiTargetField } from "./aiInline";
+import { htmlToMarkdown, isConvertibleHtml } from "../lib/htmlToMarkdown";
+import { smartEditing } from "./smartEdit";
 
 const docIdFacet = Facet.define<string, string | null>({ combine: (v) => v[0] ?? null });
 
@@ -49,6 +51,13 @@ function settingsExt(s: Settings) {
       "aria-label": "Document editor",
     }),
   };
+}
+
+function inCode(view: EditorView, pos: number): boolean {
+  for (let n: SyntaxNode | null = syntaxTree(view.state).resolveInner(pos, -1); n; n = n.parent) {
+    if (n.name === "FencedCode" || n.name === "CodeBlock" || n.name === "InlineCode") return true;
+  }
+  return false;
 }
 
 function linkAt(view: EditorView, pos: number): string | null {
@@ -99,6 +108,7 @@ const baseExtensions: Extension[] = [
   syntaxHighlighting(marginHighlight),
   search({ top: true, createPanel: createFindPanel }),
   slashCommands(),
+  smartEditing(),
   aiTargetField,
   aiFlashField,
   keymap.of([...formattingKeymap, ...completionKeymap, ...searchKeymap, ...historyKeymap, indentWithTab, ...defaultKeymap]),
@@ -130,6 +140,24 @@ const baseExtensions: Extension[] = [
         view.dispatch({
           changes: { from: sel.from, to: sel.to, insert: `[${label}](${text})` },
           selection: { anchor: sel.from + label.length + text.length + 4 },
+          userEvent: "input.paste",
+        });
+        return true;
+      }
+      const html = e.clipboardData?.getData("text/html") ?? "";
+      if (html && isConvertibleHtml(html) && !inCode(view, sel.from)) {
+        let md = "";
+        try {
+          md = htmlToMarkdown(html);
+        } catch {
+          return false;
+        }
+        if (!md) return false;
+        e.preventDefault();
+        view.dispatch({
+          changes: { from: sel.from, to: sel.to, insert: md },
+          selection: { anchor: sel.from + md.length },
+          scrollIntoView: true,
           userEvent: "input.paste",
         });
         return true;

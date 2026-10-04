@@ -33,6 +33,7 @@ import { WELCOME_DOC, WELCOME_TITLE } from "../lib/samples";
 import {
   activeDoc,
   getState,
+  goalKey,
   isDirty,
   setState,
   type DialogState,
@@ -108,6 +109,32 @@ export function ask(dialog: DialogState): Promise<{ action: string; value?: stri
   return new Promise((resolve) => {
     dialogResolve = resolve;
   });
+}
+
+export async function setWordGoal() {
+  const doc = activeDoc();
+  if (!doc) return;
+  const key = goalKey(doc);
+  const current = getState().goals[key];
+  const res = await ask({
+    title: "Word goal",
+    message: "Set a target for this document. Progress shows in the status bar.",
+    input: { value: current ? String(current) : "1000", placeholder: "e.g. 1500" },
+    actions: [
+      ...(current ? [{ id: "clear", label: "Remove goal", kind: "danger" as const }] : []),
+      { id: "cancel", label: "Cancel" },
+      { id: "ok", label: "Set goal", kind: "primary" as const },
+    ],
+  });
+  if (!res || res.action === "cancel") return;
+  const goals = { ...getState().goals };
+  if (res.action === "clear") delete goals[key];
+  else {
+    const n = Math.round(Number((res.value ?? "").replace(/[^\d]/g, "")));
+    if (!n) return;
+    goals[key] = Math.min(n, 1_000_000);
+  }
+  setState({ goals });
 }
 
 export function resolveDialog(action: string | null, value?: string) {
