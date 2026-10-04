@@ -492,6 +492,18 @@ pub fn run() {
             ai::kill_stale(app.handle());
             ai::watch_idle(app.handle().clone());
 
+            // The frontend reveals the window once it has painted; never leave it hidden if that fails.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                if let Some(w) = handle.get_webview_window("main") {
+                    if !w.is_visible().unwrap_or(true) {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    }
+                }
+            });
+
             #[cfg(target_os = "macos")]
             {
                 let menu = build_menu(app)?;

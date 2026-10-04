@@ -175,7 +175,8 @@ export function App() {
     });
     const persist = () => void flushAll();
     window.addEventListener("pagehide", persist);
-    requestAnimationFrame(() => requestAnimationFrame(() => void win.show()));
+    // Not requestAnimationFrame: WebKit doesn't run frames for a hidden window, so it would never fire.
+    setTimeout(() => void win.show(), 30);
     return () => {
       offResize();
       offFocus();
