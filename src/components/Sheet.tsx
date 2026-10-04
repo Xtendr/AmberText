@@ -150,6 +150,25 @@ function GoalButton({ words }: { words: number }) {
   );
 }
 
+/** Styled (live preview) vs plain Markdown source — same text either way. */
+function SyntaxSwitch() {
+  const live = useStore((s) => s.settings.livePreview);
+  const set = (v: boolean) => {
+    if (v !== live) getState().setSettings({ livePreview: v });
+  };
+  const kbd = formatKeys(commandById.get("live-preview")?.keys).join("");
+  return (
+    <div className="syntax-switch" role="radiogroup" aria-label="Editor view">
+      <button role="radio" aria-checked={live} className={live ? "is-on" : ""} onClick={() => set(true)} data-tip="Formatting rendered as you write" data-kbd={kbd}>
+        Styled
+      </button>
+      <button role="radio" aria-checked={!live} className={!live ? "is-on" : ""} onClick={() => set(false)} data-tip="Plain Markdown, every character visible" data-kbd={kbd}>
+        Markdown
+      </button>
+    </div>
+  );
+}
+
 function StatusBar() {
   const doc = useStore(activeDoc);
   const cursor = useStore((s) => s.cursor);
@@ -203,6 +222,8 @@ function StatusBar() {
       <span className="status-spacer" />
       {mode !== "read" && (
         <>
+          <SyntaxSwitch />
+          <span className="status-sep" />
           <span className="status-item">
             Ln {cursor.line}, Col {cursor.col}
           </span>

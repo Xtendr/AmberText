@@ -46,6 +46,33 @@ export function App() {
   }, [settings.theme, settings.accent, settings.material]);
 
   useEffect(() => {
+    // Narrow windows give the page priority; the sidebar comes back once there's room,
+    // but only if it was us that hid it.
+    const NARROW = 860;
+    let autoHidden = false;
+    let wasNarrow = window.innerWidth < NARROW;
+    if (wasNarrow && getState().settings.sidebarOpen) {
+      autoHidden = true;
+      getState().setSettings({ sidebarOpen: false });
+    }
+    const onResize = () => {
+      const narrow = window.innerWidth < NARROW;
+      if (narrow === wasNarrow) return;
+      wasNarrow = narrow;
+      const open = getState().settings.sidebarOpen;
+      if (narrow && open) {
+        autoHidden = true;
+        getState().setSettings({ sidebarOpen: false });
+      } else if (!narrow && autoHidden) {
+        autoHidden = false;
+        if (!open) getState().setSettings({ sidebarOpen: true });
+      }
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
     resetMermaidTheme();
   }, [dark, settings.accent]);
 
