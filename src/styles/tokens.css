@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Margin — design tokens
+   Warm paper & ink. One accent. Typography does the heavy lifting.
+   ========================================================================== */
+
+:root {
+  --font-ui: "Inter Variable", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Inter Variable", "Segoe UI Variable Text", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Cascadia Code", "SF Mono", ui-monospace, Consolas, monospace;
+
+  --font-writing: var(--font-serif);
+  --writing-size: 18px;
+  --writing-lh: 1.7;
+  --measure: 70ch;
+
+  --titlebar-h: 46px;
+  --statusbar-h: 30px;
+  --sidebar-w: 256px;
+  --sheet-gap: 8px;
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+  --r-2xl: 18px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --t-fast: 110ms;
+  --t-base: 180ms;
+  --t-slow: 320ms;
+
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-md: 13.5px;
+  --text-lg: 15px;
+}
+
+[data-platform="mac"] {
+  --titlebar-h: 48px;
+}
+
+/* ---------- Light: paper ---------- */
+[data-theme="light"] {
+  color-scheme: light;
+  --chrome: #efede8;
+  --chrome-material: rgba(244, 242, 237, 0.42);
+  --sidebar: transparent;
+  --sheet: #fdfcfa;
+  --sheet-border: rgba(40, 32, 18, 0.085);
+  --sheet-shadow: 0 0 0 0.5px rgba(40, 32, 18, 0.05), 0 1px 2px rgba(40, 32, 18, 0.04), 0 6px 24px -12px rgba(40, 32, 18, 0.1);
+
+  --text: #1f1e1b;
+  --text-2: #5c5952;
+  --text-3: #8d897f;
+  --text-4: #b8b3a8;
+  --text-on-accent: #ffffff;
+
+  --line: rgba(40, 32, 18, 0.08);
+  --line-strong: rgba(40, 32, 18, 0.15);
+  --hover: rgba(40, 32, 18, 0.05);
+  --press: rgba(40, 32, 18, 0.085);
+  --selected: rgba(40, 32, 18, 0.07);
+
+  --surface-1: #f8f7f3;
+  --surface-2: #f2f0eb;
+  --surface-3: #eae7e0;
+  --code-bg: #f5f3ee;
+  --popover: #ffffff;
+  --popover-border: rgba(40, 32, 18, 0.1);
+  --shadow-pop: 0 0 0 0.5px rgba(40, 32, 18, 0.08), 0 2px 6px -1px rgba(40, 32, 18, 0.06), 0 18px 48px -12px rgba(40, 32, 18, 0.22);
+  --shadow-sm: 0 0 0 0.5px rgba(40, 32, 18, 0.1), 0 1px 2px rgba(40, 32, 18, 0.06);
+  --scrim: rgba(30, 26, 18, 0.18);
+
+  --inverse: #1f1e1b;
+  --inverse-text: #f4f1ea;
+
+  --danger: #c4361f;
+  --success: #3d7f55;
+  --warning: #b07a12;
+
+  --tok-keyword: #a2410f;
+  --tok-string: #3f7d58;
+  --tok-number: #8e4ec6;
+  --tok-comment: #a29e93;
+  --tok-function: #1e6fa8;
+  --tok-type: #9a6a00;
+  --tok-property: #5c5952;
+  --tok-tag: #b4432b;
+  --tok-operator: #6f6b62;
+
+  --callout-note: #2f6fd0;
+  --callout-tip: #2f8a57;
+  --callout-important: #8a4fd0;
+  --callout-warning: #b67a0c;
+  --callout-caution: #cc3b25;
+}
+
+/* ---------- Dark: ink ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --chrome: #171716;
+  --chrome-material: rgba(23, 23, 22, 0.35);
+  --sidebar: transparent;
+  --sheet: #1e1e1d;
+  --sheet-border: rgba(255, 250, 240, 0.07);
+  --sheet-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+
+  --text: #ebe9e4;
+  --text-2: #aeaaa1;
+  --text-3: #7e7b74;
+  --text-4: #57554f;
+  --text-on-accent: #1a1a19;
+
+  --line: rgba(255, 250, 240, 0.075);
+  --line-strong: rgba(255, 250, 240, 0.14);
+  --hover: rgba(255, 250, 240, 0.055);
+  --press: rgba(255, 250, 240, 0.09);
+  --selected: rgba(255, 250, 240, 0.075);
+
+  --surface-1: #232322;
+  --surface-2: #282827;
+  --surface-3: #313130;
+  --code-bg: #252524;
+  --popover: #262625;
+  --popover-border: rgba(255, 250, 240, 0.09);
+  --shadow-pop: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 2px 8px -1px rgba(0, 0, 0, 0.3), 0 24px 56px -12px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --scrim: rgba(0, 0, 0, 0.35);
+
+  --inverse: #f1eee8;
+  --inverse-text: #1c1c1b;
+
+  --danger: #ff6b55;
+  --success: #6cc08a;
+  --warning: #e3b04b;
+
+  --tok-keyword: #f0936b;
+  --tok-string: #94cf9f;
+  --tok-number: #c9a2f2;
+  --tok-comment: #6f6c65;
+  --tok-function: #7cb8ec;
+  --tok-type: #e6c26e;
+  --tok-property: #c9c5bc;
+  --tok-tag: #f08c74;
+  --tok-operator: #a5a198;
+
+  --callout-note: #6ea2f0;
+  --callout-tip: #68c08e;
+  --callout-important: #b48df0;
+  --callout-warning: #e8b34f;
+  --callout-caution: #ff7f6a;
+}
+
+/* ---------- Accents ---------- */
+[data-accent="vermilion"] { --accent: #d9512c; }
+[data-accent="ink"] { --accent: #4c58d0; }
+[data-accent="moss"] { --accent: #3f7d58; }
+[data-accent="plum"] { --accent: #8e4ec6; }
+[data-accent="ocean"] { --accent: #1c7aa3; }
+[data-accent="graphite"] { --accent: #4b5059; }
+
+[data-theme="dark"][data-accent="vermilion"] { --accent: #ff7a52; }
+[data-theme="dark"][data-accent="ink"] { --accent: #8d97ff; }
+[data-theme="dark"][data-accent="moss"] { --accent: #78c597; }
+[data-theme="dark"][data-accent="plum"] { --accent: #c49cf3; }
+[data-theme="dark"][data-accent="ocean"] { --accent: #62c0e6; }
+[data-theme="dark"][data-accent="graphite"] { --accent: #c3c8d0; }
+
+:root {
+  --accent-soft: color-mix(in oklab, var(--accent) 13%, transparent);
+  --accent-softer: color-mix(in oklab, var(--accent) 7%, transparent);
+  --accent-line: color-mix(in oklab, var(--accent) 40%, transparent);
+  --accent-soft-solid: color-mix(in oklab, var(--accent) 14%, var(--sheet));
+  --selection: color-mix(in oklab, var(--accent) 22%, transparent);
+  --focus-ring: 0 0 0 2px var(--sheet), 0 0 0 4px color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+/* Window material: let Mica / vibrancy show through the chrome. */
+[data-material="on"] {
+  --chrome: var(--chrome-material);
+}

@@ -1,0 +1,445 @@
+/* Margin — reading typography (preview, read mode, export, print) */
+
+.prose {
+  font-family: var(--font-writing);
+  font-size: var(--writing-size);
+  line-height: var(--writing-lh);
+  color: var(--text);
+  font-optical-sizing: auto;
+  font-kerning: normal;
+  overflow-wrap: break-word;
+  hanging-punctuation: first;
+}
+.prose > :first-child {
+  margin-top: 0 !important;
+}
+.prose > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose dl,
+.prose blockquote,
+.prose table,
+.prose .code-block,
+.prose > pre,
+.prose figure {
+  margin: 0 0 1em;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 1.6em 0 0.5em;
+  scroll-margin-top: 24px;
+}
+.prose h1 {
+  font-size: 1.95em;
+  line-height: 1.2;
+  letter-spacing: -0.026em;
+  margin-top: 1.2em;
+}
+.prose h2 {
+  font-size: 1.45em;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.prose h3 {
+  font-size: 1.2em;
+  line-height: 1.4;
+}
+.prose h4 {
+  font-size: 1.05em;
+}
+.prose h5,
+.prose h6 {
+  font-family: var(--font-ui);
+  font-size: 0.78em;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+  transition: text-decoration-color 120ms;
+}
+.prose a:hover {
+  text-decoration-color: var(--accent);
+}
+.prose strong {
+  font-weight: 650;
+}
+.prose del,
+.prose s {
+  color: var(--text-2);
+  text-decoration-color: var(--text-3);
+}
+.prose mark {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.15em;
+}
+.prose kbd {
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  padding: 0.15em 0.45em;
+  border-radius: 5px;
+  background: var(--surface-2);
+  box-shadow: inset 0 -1px 0 var(--line-strong);
+}
+.prose sup,
+.prose sub {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--code-bg);
+  border-radius: 5px;
+  padding: 0.14em 0.34em;
+  box-shadow: inset 0 0 0 0.5px var(--line);
+}
+
+.prose .code-block {
+  position: relative;
+  background: var(--code-bg);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  overflow: hidden;
+}
+.prose .code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 6px 8px 0 18px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.03em;
+  color: var(--text-3);
+}
+.prose .code-copy {
+  font: inherit;
+  font-size: 11px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-2);
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  opacity: 0;
+  transition: opacity 140ms;
+  cursor: pointer;
+}
+.prose .code-block:hover .code-copy {
+  opacity: 1;
+}
+.prose pre {
+  margin: 0;
+  padding: 12px 18px 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  line-height: 1.62;
+  tab-size: 2;
+  font-variant-ligatures: none;
+}
+.prose .code-block:not(:has(.code-head)) pre {
+  padding-top: 16px;
+}
+.prose pre code {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.prose .hljs-keyword,
+.prose .hljs-selector-tag,
+.prose .hljs-built_in,
+.prose .hljs-doctag {
+  color: var(--tok-keyword);
+}
+.prose .hljs-string,
+.prose .hljs-regexp,
+.prose .hljs-template-variable,
+.prose .hljs-symbol {
+  color: var(--tok-string);
+}
+.prose .hljs-number,
+.prose .hljs-literal,
+.prose .hljs-variable.constant_ {
+  color: var(--tok-number);
+}
+.prose .hljs-comment,
+.prose .hljs-quote {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.prose .hljs-title.function_,
+.prose .hljs-title {
+  color: var(--tok-function);
+}
+.prose .hljs-type,
+.prose .hljs-title.class_,
+.prose .hljs-class .hljs-title {
+  color: var(--tok-type);
+}
+.prose .hljs-attr,
+.prose .hljs-attribute,
+.prose .hljs-property,
+.prose .hljs-params {
+  color: var(--tok-property);
+}
+.prose .hljs-tag,
+.prose .hljs-name,
+.prose .hljs-selector-class,
+.prose .hljs-selector-id {
+  color: var(--tok-tag);
+}
+.prose .hljs-meta,
+.prose .hljs-punctuation {
+  color: var(--text-3);
+}
+.prose .hljs-addition {
+  color: var(--success);
+}
+.prose .hljs-deletion {
+  color: var(--danger);
+}
+
+.prose blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0 0 0 1.05em;
+  border-left: 3px solid var(--line-strong);
+  color: var(--text-2);
+  font-style: italic;
+}
+.prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+.prose .callout {
+  --c: var(--callout-note);
+  font-style: normal;
+  color: var(--text);
+  border-left-color: var(--c);
+  background: color-mix(in oklab, var(--c) 7%, transparent);
+  border-radius: 0 10px 10px 0;
+  padding: 0.7em 1.1em;
+}
+.prose .callout-note { --c: var(--callout-note); }
+.prose .callout-tip { --c: var(--callout-tip); }
+.prose .callout-important { --c: var(--callout-important); }
+.prose .callout-warning { --c: var(--callout-warning); }
+.prose .callout-caution { --c: var(--callout-caution); }
+.prose .callout-title {
+  font-family: var(--font-ui);
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--c);
+  margin-bottom: 0.25em;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.45em;
+}
+.prose li {
+  margin: 0.2em 0;
+}
+.prose li > ul,
+.prose li > ol {
+  margin: 0.2em 0 0;
+}
+.prose li::marker {
+  color: var(--text-3);
+}
+.prose ol > li::marker {
+  font-variant-numeric: tabular-nums;
+}
+.prose .task-list {
+  list-style: none;
+  padding-left: 0.1em;
+}
+.prose .task-list .task-list {
+  padding-left: 1.45em;
+}
+.prose .task-check {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1.02em;
+  height: 1.02em;
+  margin: 0 0.45em 0 0;
+  vertical-align: -0.16em;
+  border-radius: 0.3em;
+  box-shadow: inset 0 0 0 1.5px var(--text-4);
+  cursor: pointer;
+  transition: background 160ms;
+}
+.prose .task-check:checked {
+  background: var(--accent);
+  box-shadow: none;
+}
+.prose .task-check:checked::after {
+  content: "";
+  width: 0.5em;
+  height: 0.28em;
+  border: solid var(--text-on-accent, #fff);
+  border-width: 0 0 2px 2px;
+  transform: translateY(-0.05em) rotate(-45deg);
+}
+.prose .task-item.done {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-4);
+}
+
+.prose hr {
+  border: 0;
+  height: 1px;
+  margin: 2.2em 0;
+  background: linear-gradient(to right, transparent, var(--line-strong) 18%, var(--line-strong) 82%, transparent);
+}
+
+.prose table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-ui);
+  font-size: 0.8em;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+  display: table;
+  min-width: 50%;
+}
+.prose th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-1);
+}
+.prose th,
+.prose td {
+  padding: 0.6em 1em;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.prose th + th,
+.prose td + td {
+  border-left: 1px solid var(--line);
+}
+.prose tr:last-child td {
+  border-bottom: 0;
+}
+.prose td code,
+.prose th code {
+  font-size: 0.92em;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  vertical-align: middle;
+}
+.prose p > img:only-child {
+  display: block;
+  margin: 0.4em auto;
+}
+
+.prose .frontmatter {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 18px;
+  margin: 0 0 2.2em;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.prose .frontmatter > div {
+  display: contents;
+}
+.prose .frontmatter dt {
+  color: var(--text-3);
+  font-weight: 550;
+}
+.prose .frontmatter dd {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.prose .katex-display {
+  margin: 1.2em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2em 0;
+}
+.prose .katex {
+  font-size: 1.08em;
+}
+
+.prose .mermaid-block {
+  display: flex;
+  justify-content: center;
+  margin: 1.4em 0;
+}
+.prose .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+.prose .mermaid-src {
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: var(--text-3);
+  white-space: pre-wrap;
+}
+.prose .mermaid-error {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+.prose .footnotes {
+  font-size: 0.85em;
+  color: var(--text-2);
+  margin-top: 3em;
+}
+.prose .footnotes-sep {
+  margin: 3em 0 1em;
+}
+.prose .footnote-ref a,
+.prose .footnote-backref {
+  text-decoration: none;
+}
