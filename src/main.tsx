@@ -10,6 +10,7 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/editor.css";
 import "./styles/prose.css";
+import "./styles/ai.css";
 import { App } from "./App";
 import { boot } from "./state/actions";
 

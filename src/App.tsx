@@ -14,6 +14,7 @@ import { handleGlobalKey, MENU_TO_COMMAND, runCommand } from "./commands";
 import { isMac, onFileDrop, onNativeEvent, takeLaunchFiles, win } from "./lib/platform";
 import { resetMermaidTheme } from "./lib/mermaid";
 import { bridge } from "./editor/bridge";
+import { refreshAi } from "./ai/engine";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { Sheet } from "./components/Sheet";
@@ -117,6 +118,7 @@ export function App() {
 
   // Native window integration.
   useEffect(() => {
+    void refreshAi();
     const sync = async () => {
       setState({ maximized: await win.isMaximized(), fullscreen: await win.isFullscreen() });
     };

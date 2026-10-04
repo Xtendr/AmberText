@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronRight, CornerDownLeft, FileText, Hash, Search, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, CornerDownLeft, FileText, Hash, Search, Sparkles, Zap } from "lucide-react";
+import { runCustom } from "../ai/session";
+import { isMac } from "../lib/platform";
 import { activeDoc, getState, setState, useStore, type PaletteMode } from "../state/store";
 import { displayName, openPath, scrollToHeading, setViewMode } from "../state/actions";
 import { COMMANDS, formatKeys, type Command } from "../commands";
@@ -19,8 +21,12 @@ interface Item {
   indices: number[];
   score: number;
   indent?: number;
+  ai?: boolean;
+  quoted?: boolean;
   run: () => void;
 }
+
+const AI_FEATURED = new Set(["ask-ai", "ai-summarize", "ai-titles", "ai-actions", "ai-review"]);
 
 function flatten(tree: FileEntry[], out: FileEntry[] = []) {
   for (const e of tree) {
@@ -55,6 +61,7 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
   const recent = useStore((s) => s.recentFiles);
   const hasDoc = useStore((s) => !!s.activeId);
   const viewMode = useStore((s) => s.settings.viewMode);
+  const aiEnabled = useStore((s) => s.settings.aiEnabled);
 
   const mode: PaletteMode = PREFIX[query[0]] ?? "files";
   const q = PREFIX[query[0]] ? query.slice(1).trim() : query.trim();
@@ -70,17 +77,22 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
     if (mode === "commands") {
-      const cmds = COMMANDS.filter((c) => !c.hidden && (!c.doc || hasDoc) && (!c.editor || viewMode !== "read"));
+      const cmds = COMMANDS.filter(
+        (c) => !c.hidden && (!c.doc || hasDoc) && (!c.editor || viewMode !== "read" || c.group === "AI") && (aiEnabled || c.group !== "AI" || c.id === "ai-settings"),
+      );
       for (const c of cmds) {
+        if (!q && c.group === "AI" && !AI_FEATURED.has(c.id)) continue;
         const r = fuzzy(q, c.title) ?? (c.keywords ? fuzzy(q, c.keywords) : null) ?? fuzzy(q, `${c.group} ${c.title}`);
         if (!r) continue;
         const direct = fuzzy(q, c.title);
+        const isAi = c.group === "AI";
         out.push({
           key: c.id,
           section: q ? "Commands" : c.group,
           label: c.title,
           keys: formatKeys(c.keys),
-          icon: <Zap size={15} strokeWidth={1.8} />,
+          icon: isAi ? <Sparkles size={15} strokeWidth={1.8} /> : <Zap size={15} strokeWidth={1.8} />,
+          ai: isAi,
           indices: direct?.indices ?? [],
           score: r.score - (direct ? 0 : 2),
           run: () => runCmd(c),
@@ -88,8 +100,29 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
       }
       if (q) out.sort((a, b) => b.score - a.score);
       else {
-        const order = ["File", "View", "Format", "Insert", "Edit", "Appearance", "Help"];
+        const order = ["AI", "File", "View", "Format", "Insert", "Edit", "Appearance", "Help"];
         out.sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section));
+      }
+      if (q && hasDoc && aiEnabled) {
+        const hasSel = !!bridge.view && !bridge.view.state.selection.main.empty;
+        const ask: Item = {
+          key: "ask-ai-query",
+          section: "Ask AI",
+          label: q,
+          detail: hasSel ? "About the selection" : "About this document",
+          icon: <Sparkles size={15} strokeWidth={1.8} />,
+          ai: true,
+          quoted: true,
+          indices: [],
+          score: 0,
+          run: () => {
+            close();
+            requestAnimationFrame(() => runCustom(q, hasSel ? "selection" : "document"));
+          },
+        };
+        const strong = out.length && out[0].score > 0;
+        if (q.split(/\s+/).length >= 3 || !strong) out.unshift(ask);
+        else out.push(ask);
       }
       return out;
     }
@@ -173,7 +206,7 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
     }
     if (q) out.sort((a, b) => b.score - a.score);
     return out.slice(0, 200);
-  }, [mode, q, docs, ws, recent, hasDoc, viewMode]);
+  }, [mode, q, docs, ws, recent, hasDoc, viewMode, aiEnabled]);
 
   useEffect(() => setActive(0), [query]);
 
@@ -209,7 +242,7 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
     } else if (e.key === "Enter") {
       e.preventDefault();
       choose(active);
-    } else if (e.key === "Escape") {
+    } else if (e.key === "Escape" || (e.key.toLowerCase() === "k" && (isMac ? e.metaKey : e.ctrlKey))) {
       e.preventDefault();
       close();
     } else if (e.key === "Backspace" && (query === ">" || query === "#")) {
@@ -251,13 +284,13 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
                 <button
                   role="option"
                   aria-selected={i === active}
-                  className={`palette-item${i === active ? " is-active" : ""}`}
+                  className={`palette-item${i === active ? " is-active" : ""}${item.ai ? " is-ai" : ""}`}
                   onMouseMove={() => i !== active && setActive(i)}
                   onClick={() => choose(i)}
                 >
                   <span className="pi-icon">{item.icon}</span>
                   <span className="pi-label" style={item.indent ? { paddingLeft: item.indent } : undefined}>
-                    <Highlight text={item.label} indices={item.indices} />
+                    {item.quoted ? <>“{item.label}”</> : <Highlight text={item.label} indices={item.indices} />}
                   </span>
                   {item.detail && <span className="pi-detail">{item.detail}</span>}
                   {item.keys && item.keys.length > 0 && (

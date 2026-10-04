@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Bold, Code, Italic, Link, ListChecks, Quote, Strikethrough } from "lucide-react";
+import { Bold, Code, Italic, Link, ListChecks, Quote, Sparkles, Strikethrough } from "lucide-react";
+import { openAiMenu, useAiSession } from "../ai/session";
 import type { EditorView } from "@codemirror/view";
 import { bridge } from "../editor/bridge";
 import { headingLevel, insertLink, isInlineActive, setHeading, toggleInline, toggleLinePrefix } from "../editor/commands";
@@ -19,6 +20,7 @@ export function SelectionToolbar() {
   const [, setVersion] = useState(0);
   const pointerDown = useRef(false);
   const mode = useStore((s) => s.settings.viewMode);
+  const aiEnabled = useStore((s) => s.settings.aiEnabled);
   const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,7 +29,8 @@ export function SelectionToolbar() {
       const view = bridge.view;
       if (!view || !bridge.viewDocId) return setPos(null);
       const sel = view.state.selection.main;
-      if (sel.empty || pointerDown.current || !view.hasFocus || view.state.selection.ranges.length > 1) return setPos(null);
+      const ai = useAiSession.getState();
+      if (sel.empty || pointerDown.current || !view.hasFocus || view.state.selection.ranges.length > 1 || ai.menu || ai.session) return setPos(null);
       const host = view.dom.parentElement!.getBoundingClientRect();
       const start = view.coordsAtPos(sel.from);
       const end = view.coordsAtPos(sel.to);
@@ -68,7 +71,11 @@ export function SelectionToolbar() {
     };
     window.addEventListener("mousedown", down, true);
     window.addEventListener("mouseup", up, true);
+    const offAi = useAiSession.subscribe((s, prev) => {
+      if (s.menu !== prev.menu || s.session !== prev.session) schedule();
+    });
     return () => {
+      offAi();
       offUpdate();
       offScroll();
       window.clearTimeout(timer);
@@ -101,6 +108,15 @@ export function SelectionToolbar() {
       style={{ left: pos.x, top: pos.y, transform: `translate(-50%, ${pos.below ? "0" : "-100%"})` }}
       onMouseDown={(e) => e.preventDefault()}
     >
+      {aiEnabled && (
+        <>
+          <button className="tb-btn tb-ai" onMouseDown={act(() => openAiMenu())} data-tip="Ask AI" data-kbd={keys("ask-ai")}>
+            <Sparkles size={14} strokeWidth={2} />
+            <span>Ask AI</span>
+          </button>
+          <span className="tb-sep" />
+        </>
+      )}
       {btn("Bold", keys("bold"), isInlineActive(state, "**"), (v) => toggleInline(v, "**"), <Bold size={15} strokeWidth={2.2} />)}
       {btn("Italic", keys("italic"), isInlineActive(state, "_"), (v) => toggleInline(v, "_"), <Italic size={15} strokeWidth={2.2} />)}
       {btn("Strikethrough", keys("strike"), isInlineActive(state, "~~"), (v) => toggleInline(v, "~~"), <Strikethrough size={15} strokeWidth={2} />)}

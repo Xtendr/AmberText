@@ -28,11 +28,15 @@ import {
   toggleZen,
 } from "./state/actions";
 import { activeDoc, getState, setState } from "./state/store";
+import { extractHeadings } from "./lib/text";
+import { slugify } from "./lib/markdown";
+import { DOCUMENT_ACTIONS } from "./ai/actions";
+import { openAiMenu, runAction } from "./ai/session";
 
 export interface Command {
   id: string;
   title: string;
-  group: "File" | "View" | "Format" | "Insert" | "Edit" | "Help" | "Appearance";
+  group: "AI" | "File" | "View" | "Format" | "Insert" | "Edit" | "Help" | "Appearance";
   keys?: string;
   /** Needs an open document. */
   doc?: boolean;
@@ -109,7 +113,40 @@ function toggleSetting(key: "focusMode" | "typewriter" | "livePreview" | "spellc
   };
 }
 
+function insertToc() {
+  const v = bridge.view;
+  const doc = activeDoc();
+  if (!v || !doc) return;
+  const all = extractHeadings(v.state.doc.toString());
+  // A lone H1 is the document title, not a section.
+  const hs = all.filter((h) => h.level === 1).length <= 1 ? all.filter((h) => h.level > 1) : all;
+  if (!hs.length) {
+    toast("Add a few headings first — the contents are built from them");
+    return;
+  }
+  const min = Math.min(...hs.map((h) => h.level));
+  const lines = hs.map((h) => `${"  ".repeat(h.level - min)}- [${h.text}](#${slugify(h.text)})`);
+  withView((view) => insertBlock(view, `**Contents**\n\n${lines.join("\n")}\n‸`))();
+}
+
+const AI_COMMANDS: Command[] = [
+  { id: "ask-ai", title: "Ask AI…", group: "AI", keys: "Mod+J", doc: true, keywords: "assistant intelligence write edit", run: () => openAiMenu() },
+  ...DOCUMENT_ACTIONS.map(
+    (a): Command => ({
+      id: `ai-${a.id}`,
+      title: a.label,
+      group: "AI",
+      doc: true,
+      editor: true,
+      keywords: `ai ${a.keywords ?? ""}`,
+      run: () => runAction(a),
+    }),
+  ),
+  { id: "ai-settings", title: "AI models & privacy", group: "AI", keywords: "local model download qwen ollama settings", run: () => setState({ settingsOpen: true, settingsSection: "ai" }) },
+];
+
 export const COMMANDS: Command[] = [
+  ...AI_COMMANDS,
   // File
   { id: "new", title: "New document", group: "File", keys: "Mod+N", run: () => void newDoc() },
   { id: "open", title: "Open file…", group: "File", keys: "Mod+O", run: openFileDialog },
@@ -147,7 +184,8 @@ export const COMMANDS: Command[] = [
   { id: "typewriter", title: "Toggle typewriter scrolling", group: "View", keys: "Mod+Shift+T", run: toggleSetting("typewriter", "Typewriter scrolling") },
   { id: "zen", title: "Toggle zen mode", group: "View", keys: "Mod+Shift+Enter", keywords: "fullscreen distraction free", run: () => void toggleZen() },
   { id: "live-preview", title: "Toggle live preview", group: "View", keys: "Mod+Shift+M", keywords: "source raw markdown", run: toggleSetting("livePreview", "Live preview") },
-  { id: "palette", title: "Command palette", group: "View", keys: "Mod+Shift+P", hidden: true, run: () => setState({ palette: "commands" }) },
+  { id: "palette", title: "Command palette", group: "View", keys: "Mod+K", hidden: true, run: () => setState((s) => ({ palette: s.palette ? null : "commands" })) },
+  { id: "palette-legacy", title: "Command palette", group: "View", keys: "Mod+Shift+P", hidden: true, run: () => setState({ palette: "commands" }) },
   { id: "goto-heading", title: "Go to heading…", group: "View", keys: "Mod+G", doc: true, keywords: "outline section jump", run: () => setState({ palette: "headings" }) },
   { id: "settings", title: "Settings", group: "Appearance", keys: "Mod+,", keywords: "preferences options", run: () => setState((s) => ({ settingsOpen: !s.settingsOpen })) },
   { id: "theme", title: "Cycle theme (system, light, dark)", group: "Appearance", keys: "Mod+Shift+L", keywords: "dark light mode", run: cycleTheme },
@@ -179,7 +217,7 @@ export const COMMANDS: Command[] = [
   { id: "italic", title: "Italic", group: "Format", keys: "Mod+I", doc: true, run: withView((v) => toggleInline(v, "_")) },
   { id: "strike", title: "Strikethrough", group: "Format", keys: "Mod+Shift+X", doc: true, run: withView((v) => toggleInline(v, "~~")) },
   { id: "code", title: "Inline code", group: "Format", keys: "Mod+E", doc: true, run: withView((v) => toggleInline(v, "`")) },
-  { id: "link", title: "Link", group: "Format", keys: "Mod+K", doc: true, run: withView(insertLink) },
+  { id: "link", title: "Link", group: "Format", keys: "Mod+Shift+K", doc: true, run: withView(insertLink) },
   { id: "h1", title: "Heading 1", group: "Format", keys: "Mod+Alt+1", doc: true, run: withView((v) => setHeading(v, 1)) },
   { id: "h2", title: "Heading 2", group: "Format", keys: "Mod+Alt+2", doc: true, run: withView((v) => setHeading(v, 2)) },
   { id: "h3", title: "Heading 3", group: "Format", keys: "Mod+Alt+3", doc: true, run: withView((v) => setHeading(v, 3)) },
@@ -203,6 +241,7 @@ export const COMMANDS: Command[] = [
   },
   { id: "insert-callout", title: "Insert callout", group: "Insert", doc: true, keywords: "note tip warning admonition", run: withView((v) => insertBlock(v, "> [!NOTE]\n> ‸")) },
   { id: "insert-hr", title: "Insert divider", group: "Insert", doc: true, keywords: "horizontal rule", run: withView((v) => insertBlock(v, "---\n‸")) },
+  { id: "insert-toc", title: "Insert table of contents", group: "Insert", doc: true, keywords: "toc outline headings contents", run: insertToc },
   {
     id: "insert-image",
     title: "Insert image from file…",
@@ -291,8 +330,6 @@ for (const c of COMMANDS) {
   const normalized = c.keys.replace(/^Ctrl\+/, isMac ? "Ctrl+" : "Mod+");
   if (!comboMap.has(normalized)) comboMap.set(normalized, c);
 }
-comboMap.set("Mod+K", commandById.get("link")!);
-
 export function handleGlobalKey(e: KeyboardEvent): boolean {
   const combo = eventCombo(e);
   const cmd = comboMap.get(combo);
@@ -354,4 +391,5 @@ export const MENU_TO_COMMAND: Record<string, string> = {
   typewriter: "typewriter",
   zen: "zen",
   palette: "palette",
+  ai: "ask-ai",
 };

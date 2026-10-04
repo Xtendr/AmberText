@@ -26,6 +26,15 @@ export interface Settings {
   sidebarOpen: boolean;
   sidebarTab: SidebarTab;
   sidebarWidth: number;
+  /** Show AI affordances (toolbar, menus, palette). */
+  aiEnabled: boolean;
+  /** Active local model tier, once one has been downloaded. */
+  aiModel: "compact" | "standard" | "enhanced" | null;
+  /** "local" runs Margin's own runtime; "custom" talks to an OpenAI-compatible server (Ollama, LM Studio…). */
+  aiProvider: "local" | "custom";
+  aiEndpoint: string;
+  aiEndpointModel: string;
+  aiEndpointKey: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +55,12 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarOpen: true,
   sidebarTab: "files",
   sidebarWidth: 256,
+  aiEnabled: true,
+  aiModel: null,
+  aiProvider: "local",
+  aiEndpoint: "http://localhost:11434/v1",
+  aiEndpointModel: "",
+  aiEndpointKey: "",
 };
 
 export interface Doc {
@@ -133,6 +148,8 @@ export interface AppState {
   cursor: CursorInfo;
   palette: PaletteMode | null;
   settingsOpen: boolean;
+  /** Section to show when the settings drawer opens. */
+  settingsSection: string | null;
   zen: boolean;
   typing: boolean;
   dark: boolean;
@@ -163,6 +180,7 @@ export const useStore = create<AppState>()(
       cursor: { line: 1, col: 1, selChars: 0, selWords: 0, pos: 0 },
       palette: null,
       settingsOpen: false,
+      settingsSection: null,
       zen: false,
       typing: false,
       dark: false,

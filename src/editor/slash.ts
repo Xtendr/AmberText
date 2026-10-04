@@ -33,8 +33,13 @@ import {
   Table,
   TriangleAlert,
   Workflow,
+  Sparkles,
+  PenLine,
 } from "lucide-react";
 import { fuzzy } from "../lib/fuzzy";
+import { getState } from "../state/store";
+import { openAiMenu, runAction } from "../ai/session";
+import { actionById } from "../ai/actions";
 
 export interface SlashItem {
   id: string;
@@ -56,7 +61,9 @@ const BASIC = "Basic blocks";
 const RICH = "Rich content";
 const CALLOUT = "Callouts";
 const INSERT = "Insert";
+const AI = "AI";
 const SECTIONS: Record<string, CompletionSection> = {
+  [AI]: { name: AI, rank: -1 },
   [BASIC]: { name: BASIC, rank: 0 },
   [RICH]: { name: RICH, rank: 1 },
   [CALLOUT]: { name: CALLOUT, rank: 2 },
@@ -64,6 +71,16 @@ const SECTIONS: Record<string, CompletionSection> = {
 };
 
 export const SLASH_ITEMS: SlashItem[] = [
+  { id: "ai-ask", title: "Ask AI", hint: "Write, review or ask about this page", keywords: "ai assistant write help generate", section: AI, icon: Sparkles, run: () => requestAnimationFrame(() => openAiMenu()) },
+  {
+    id: "ai-continue",
+    title: "Continue writing",
+    hint: "Let AI draft what comes next",
+    keywords: "ai continue next draft autocomplete",
+    section: AI,
+    icon: PenLine,
+    run: () => requestAnimationFrame(() => runAction(actionById.get("continue")!)),
+  },
   { id: "text", title: "Text", hint: "Plain paragraph", keywords: "paragraph body p", section: BASIC, icon: Pilcrow, template: "${}" },
   { id: "h1", title: "Heading 1", hint: "Large section title", keywords: "title h1 #", section: BASIC, icon: Heading1, template: "# ${}" },
   { id: "h2", title: "Heading 2", hint: "Medium section title", keywords: "subtitle h2 ##", section: BASIC, icon: Heading2, template: "## ${}" },
@@ -168,7 +185,8 @@ function slashSource(context: CompletionContext): CompletionResult | null {
   if (match.from > 0 && charBefore && !/\s/.test(charBefore)) return null;
   if (inCode(syntaxTree(context.state).resolveInner(match.from, -1))) return null;
   const query = match.text.slice(1);
-  const items = SLASH_ITEMS.map((item) => {
+  const aiOn = getState().settings.aiEnabled;
+  const items = SLASH_ITEMS.filter((item) => aiOn || item.section !== AI).map((item) => {
     if (!query) return { item, score: 0 };
     const r = fuzzy(query, item.title) ?? fuzzy(query, item.keywords);
     return r ? { item, score: r.score } : null;

@@ -28,6 +28,7 @@ import { countWords } from "../lib/text";
 import { fileSrc } from "../lib/platform";
 import { dirname, isExternalUrl, resolvePath } from "../lib/paths";
 import { followLink, insertImageFiles, pasteImage, pickImages, updateContent } from "../state/actions";
+import { aiFlashField, aiTargetField } from "./aiInline";
 
 const docIdFacet = Facet.define<string, string | null>({ combine: (v) => v[0] ?? null });
 
@@ -98,6 +99,8 @@ const baseExtensions: Extension[] = [
   syntaxHighlighting(marginHighlight),
   search({ top: true, createPanel: createFindPanel }),
   slashCommands(),
+  aiTargetField,
+  aiFlashField,
   keymap.of([...formattingKeymap, ...completionKeymap, ...searchKeymap, ...historyKeymap, indentWithTab, ...defaultKeymap]),
   placeholder("Start writing — or type / to insert a block"),
   EditorView.updateListener.of(onUpdate),

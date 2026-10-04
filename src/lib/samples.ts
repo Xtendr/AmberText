@@ -10,11 +10,17 @@ Move your cursor into any styled text and its syntax gently reappears. Move away
 
 - Press **/** at the start of a line to insert headings, tables, diagrams and more
 - Select text to reveal the formatting toolbar
-- Press **Ctrl P** to jump to any file, or **Ctrl Shift P** for every command
+- Press **Ctrl P** to jump to any file, or **Ctrl K** for every command
 - Switch between **Write**, **Split** and **Read** in the title bar
 
 > [!TIP]
 > Turn on *Focus mode* with **Ctrl Shift F** — everything except the paragraph you're writing softly fades away.
+
+## Writing intelligence
+
+Select a sentence and press **Ctrl J** to improve it, fix its grammar, change its tone or translate it. With nothing selected, Margin can continue your draft, suggest titles, pull out action items or review the whole document.
+
+It runs on a small model on your own computer — private, offline, and free. Pick one in **Settings → AI** the first time you ask.
 
 ## Make it yours
 

@@ -260,7 +260,7 @@ export const formattingKeymap: KeyBinding[] = [
   { key: "Mod-Shift-x", run: (v) => toggleInline(v, "~~") },
   { key: "Mod-`", run: (v) => toggleInline(v, "`") },
   { key: "Mod-e", run: (v) => toggleInline(v, "`") },
-  { key: "Mod-k", run: insertLink },
+  { key: "Mod-Shift-k", run: insertLink },
   { key: "Mod-Alt-0", run: (v) => setHeading(v, 0) },
   { key: "Mod-Alt-1", run: (v) => setHeading(v, 1) },
   { key: "Mod-Alt-2", run: (v) => setHeading(v, 2) },

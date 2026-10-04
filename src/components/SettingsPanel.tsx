@@ -4,8 +4,9 @@ import { DEFAULT_SETTINGS, getState, setState, useStore, type Accent, type Setti
 import { COMMANDS, formatKeys } from "../commands";
 import { isMac, isTauri, isWindows, platformName } from "../lib/platform";
 import { bridge } from "../editor/bridge";
+import { AiSettings } from "./ai/AiSettings";
 
-type Section = "appearance" | "writing" | "editor" | "shortcuts";
+type Section = "appearance" | "writing" | "editor" | "ai" | "shortcuts";
 
 const ACCENTS: { id: Accent; name: string; color: string }[] = [
   { id: "vermilion", name: "Vermilion", color: "#d9512c" },
@@ -262,7 +263,14 @@ function Shortcuts() {
 }
 
 export function SettingsPanel() {
-  const [section, setSection] = useState<Section>("appearance");
+  const requested = useStore((s) => s.settingsSection) as Section | null;
+  const [section, setSection] = useState<Section>(requested ?? "appearance");
+  useEffect(() => {
+    if (requested) {
+      setSection(requested);
+      setState({ settingsSection: null });
+    }
+  }, [requested]);
   const close = () => {
     setState({ settingsOpen: false });
     requestAnimationFrame(() => bridge.focus());
@@ -287,6 +295,11 @@ export function SettingsPanel() {
       sidebarOpen: s.sidebarOpen,
       sidebarTab: s.sidebarTab,
       sidebarWidth: s.sidebarWidth,
+      aiModel: s.aiModel,
+      aiProvider: s.aiProvider,
+      aiEndpoint: s.aiEndpoint,
+      aiEndpointModel: s.aiEndpointModel,
+      aiEndpointKey: s.aiEndpointKey,
     });
   };
 
@@ -294,6 +307,7 @@ export function SettingsPanel() {
     { id: "appearance", label: "Appearance" },
     { id: "writing", label: "Writing" },
     { id: "editor", label: "Editor" },
+    { id: "ai", label: "AI" },
     { id: "shortcuts", label: "Shortcuts" },
   ];
 
@@ -321,6 +335,7 @@ export function SettingsPanel() {
           {section === "appearance" && <Appearance />}
           {section === "writing" && <Writing />}
           {section === "editor" && <EditorSection />}
+          {section === "ai" && <AiSettings Switch={Switch} />}
           {section === "shortcuts" && <Shortcuts />}
           {section !== "shortcuts" && (
             <div className="set-group about">

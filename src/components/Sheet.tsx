@@ -9,6 +9,8 @@ import { basename, dirname, stripExt } from "../lib/paths";
 import { commandById, formatKeys } from "../commands";
 import { Preview } from "./Preview";
 import { SelectionToolbar } from "./SelectionToolbar";
+import { AiMenu } from "./ai/AiMenu";
+import { AiLayer } from "./ai/AiCard";
 
 function Keys({ id }: { id: string }) {
   const keys = formatKeys(commandById.get(id)?.keys);
@@ -180,6 +182,8 @@ export function Sheet() {
         <div className="pane pane-editor">
           <Editor />
           <SelectionToolbar />
+          <AiMenu />
+          <AiLayer />
         </div>
         {hasDoc && mode !== "write" && <Preview mode={mode} />}
         {!hasDoc && <Welcome />}

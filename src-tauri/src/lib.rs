@@ -1,3 +1,5 @@
+mod ai;
+
 use base64::Engine;
 use serde::Serialize;
 use std::cmp::Ordering;
@@ -429,7 +431,8 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
         .item(&item("typewriter", "Typewriter Scrolling", Some("CmdOrCtrl+Shift+T"))?)
         .item(&item("zen", "Zen Mode", Some("CmdOrCtrl+Shift+Enter"))?)
         .separator()
-        .item(&item("palette", "Command Palette…", Some("CmdOrCtrl+Shift+P"))?)
+        .item(&item("palette", "Command Palette…", Some("CmdOrCtrl+K"))?)
+        .item(&item("ai", "Ask AI…", Some("CmdOrCtrl+J"))?)
         .build()?;
     let window = SubmenuBuilder::new(app, "Window")
         .minimize()
@@ -468,9 +471,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(PendingFiles::default())
+        .manage(ai::AiState::default())
         .setup(|app| {
             let files = collect_files(std::env::args().skip(1), None);
             app.state::<PendingFiles>().0.lock().unwrap().extend(files);
+            ai::kill_stale(app.handle());
+            ai::watch_idle(app.handle().clone());
 
             #[cfg(target_os = "macos")]
             {
@@ -497,11 +503,22 @@ pub fn run() {
             reveal_path,
             take_launch_files,
             print_page,
-            set_material
+            set_material,
+            ai::ai_status,
+            ai::ai_install,
+            ai::ai_cancel_install,
+            ai::ai_remove,
+            ai::ai_start,
+            ai::ai_stop,
+            ai::ai_chat,
+            ai::ai_cancel
         ])
         .build(tauri::generate_context!())
         .expect("error while building Margin")
         .run(|_app, _event| {
+            if let tauri::RunEvent::Exit = &_event {
+                _app.state::<ai::AiState>().shutdown();
+            }
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = &_event {
                 let files: Vec<String> = urls
