@@ -30,6 +30,8 @@ export interface AiSession {
   /** How many refinements/retries so far. */
   turns: number;
   truncated?: boolean;
+  /** The output stopped early (token cap or Stop), so it must not replace the original. */
+  incomplete?: boolean;
 }
 
 export interface MenuState {
@@ -166,7 +168,7 @@ async function generate(temperature?: number) {
   const ctrl = new AbortController();
   controller = ctrl;
   const id = s.id;
-  patch({ status: "loading", output: "", error: undefined, warnings: [] });
+  patch({ status: "loading", output: "", error: undefined, warnings: [], incomplete: false });
 
   let buffer = "";
   let frame = 0;
@@ -178,9 +180,10 @@ async function generate(temperature?: number) {
   };
 
   try {
-    const raw = await chat({
+    const { text: raw, finish } = await chat({
       messages: s.messages,
-      maxTokens: s.action.maxTokens ?? (s.action.kind === "answer" ? 900 : Math.min(2400, Math.max(400, Math.ceil(s.original.length / 2.2)))),
+      // Rewrites can legitimately grow (expand, translations), so leave generous headroom.
+      maxTokens: s.action.maxTokens ?? (s.action.kind === "answer" ? 900 : Math.min(6000, Math.max(500, Math.ceil(s.original.length / 1.5)))),
       temperature: temperature ?? 0.3,
       signal: ctrl.signal,
       onToken: (t) => {
@@ -199,6 +202,7 @@ async function generate(temperature?: number) {
     patch({
       status: "done",
       output,
+      incomplete: finish === "length",
       warnings: cur.action.preserve && cur.original ? preservationWarnings(cur.original, output) : [],
     });
   } catch (e) {
@@ -242,7 +246,7 @@ export function stop() {
   controller?.abort();
   const s = getS().session;
   if (!s) return;
-  if (s.output.trim()) patch({ status: "done", output: cleanOutput(s.output, s.original, s.action.kind) });
+  if (s.output.trim()) patch({ status: "done", output: cleanOutput(s.output, s.original, s.action.kind), incomplete: true });
   else discard();
 }
 
@@ -295,8 +299,13 @@ function headingLevelBefore(state: EditorState, pos: number): number {
 
 export type AcceptMode = "replace" | "below" | "insert" | "cursor";
 
+/** Replacing with a partial result would silently delete the rest of the original. */
+export function canReplace(s: AiSession): boolean {
+  return !s.incomplete && !(s.action.scope === "document" && s.truncated);
+}
+
 export function primaryMode(s: AiSession): AcceptMode {
-  if (s.action.kind === "rewrite") return "replace";
+  if (s.action.kind === "rewrite") return canReplace(s) ? "replace" : s.action.scope === "selection" ? "below" : "insert";
   if (s.action.kind === "insert") return "insert";
   return s.action.scope === "selection" ? "below" : "cursor";
 }
@@ -306,8 +315,13 @@ export function accept(mode: AcceptMode = "replace") {
   const v = view();
   if (!s || !v || !s.output.trim() || (s.status !== "done" && s.status !== "streaming")) return;
   if (s.status === "streaming") stop();
-  const output = (getS().session ?? s).output.trim();
+  const cur = getS().session ?? s;
+  const output = cur.output.trim();
   if (!output) return;
+  if (mode === "replace" && cur.action.kind === "rewrite" && !canReplace(cur)) {
+    toast("This result stopped early, so it can't replace the original — insert or copy it instead", "error");
+    return;
+  }
   const state = v.state;
   const target = state.field(aiTargetField, false);
   const action = s.action;
@@ -365,6 +379,10 @@ export function accept(mode: AcceptMode = "replace") {
   const to = target?.to ?? state.selection.main.to;
 
   if (mode === "replace") {
+    if (!target || state.sliceDoc(target.from, target.to) !== s.original) {
+      toast("The text changed while the AI was working — try again to include your edits", "error");
+      return;
+    }
     const lead = /^\s*/.exec(s.original)![0];
     const trail = /\s*$/.exec(s.original)![0];
     const insert = lead + output + trail;
@@ -435,10 +453,21 @@ useStore.subscribe((s, prev) => {
   if (session) {
     controller?.abort();
     setS({ session: null });
-    const parked = bridge.states.get(session.docId);
-    if (parked) bridge.states.set(session.docId, { ...parked, state: parked.state.update({ effects: setAiTarget.of(null) }).state });
+    // This runs before the editor parks the outgoing state, so clear the live view when it still shows that doc.
+    if (bridge.view && bridge.viewDocId === session.docId) {
+      if (currentTarget(bridge.view)) bridge.view.dispatch({ effects: setAiTarget.of(null) });
+    } else {
+      const parked = bridge.states.get(session.docId);
+      if (parked) bridge.states.set(session.docId, { ...parked, state: parked.state.update({ effects: setAiTarget.of(null) }).state });
+    }
   }
   if (getS().menu) setS({ menu: null });
+});
+
+/* A reload from disk rewrites the whole document; the target no longer means anything. */
+bridge.onUpdate((u) => {
+  const s = getS().session;
+  if (u && s && bridge.viewDocId === s.docId && u.transactions.some((t) => t.isUserEvent("reload"))) discard(false);
 });
 
 /* When a model finishes downloading elsewhere (settings), pick up a waiting request. */

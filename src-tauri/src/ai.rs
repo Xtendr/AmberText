@@ -131,22 +131,27 @@ fn runtime_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(ai_dir(app)?.join("runtime").join(RUNTIME_TAG))
 }
 
-fn runtime_asset() -> Option<String> {
-    let name = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-        "macos-arm64.tar.gz"
+/// Release asset for this platform: (name, sha256, size). Pinned with RUNTIME_TAG.
+fn runtime_spec() -> Option<(&'static str, &'static str, u64)> {
+    Some(if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        ("macos-arm64.tar.gz", "c2540b6515cf508c270815b494ff3f228818165fe7dcdac73f643e4f10bde2e6", 11925743)
     } else if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
-        "macos-x64.tar.gz"
+        ("macos-x64.tar.gz", "37355fefe4fd208172746872e173f10e19d945ac35da01a209d9518e6ba39c13", 11477182)
     } else if cfg!(all(target_os = "windows", target_arch = "x86_64")) {
-        "win-vulkan-x64.zip"
+        ("win-vulkan-x64.zip", "5fb6aadc98f85599ff060decd8867e8c1732dd552797913ae6c0295dd4b47482", 33287292)
     } else if cfg!(all(target_os = "windows", target_arch = "aarch64")) {
-        "win-cpu-arm64.zip"
+        ("win-cpu-arm64.zip", "d599c476541d9ac4c929483e6150b6a906d0c6bd21ac739eb30d6cb6d4faaded", 12219255)
     } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
-        "ubuntu-x64.tar.gz"
+        ("ubuntu-x64.tar.gz", "34407d59947ed4ab35fe4ab2db5f61bb4d5aedfe25e6a72f702f3ae9758a396d", 17669957)
     } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
-        "ubuntu-arm64.tar.gz"
+        ("ubuntu-arm64.tar.gz", "f4ac1827e58e3df1c7f4657acc03352be4f8ad85b8abddc23741cd7bb3730cee", 13703641)
     } else {
         return None;
-    };
+    })
+}
+
+fn runtime_asset() -> Option<String> {
+    let (name, _, _) = runtime_spec()?;
     Some(format!(
         "https://github.com/ggml-org/llama.cpp/releases/download/{RUNTIME_TAG}/llama-{RUNTIME_TAG}-bin-{name}"
     ))
@@ -285,6 +290,19 @@ fn download(
             hasher.update(&buf[..n]);
             have += n as u64;
         }
+        if let Some((sha, size)) = expected {
+            // A crash between the last write and the rename leaves a complete .part behind;
+            // asking the server for bytes past the end would fail forever.
+            if have >= size {
+                let ok = have == size && format!("{:x}", hasher.clone().finalize()).eq_ignore_ascii_case(sha);
+                if ok {
+                    return fs::rename(&part, dest).map_err(err);
+                }
+                let _ = fs::remove_file(&part);
+                hasher = Sha256::new();
+                have = 0;
+            }
+        }
     } else {
         let _ = fs::remove_file(&part);
     }
@@ -340,7 +358,7 @@ fn download(
         let digest = format!("{:x}", hasher.finalize());
         if received != size || !digest.eq_ignore_ascii_case(sha) {
             let _ = fs::remove_file(&part);
-            return Err("The downloaded model didn't match its checksum. Please try again.".into());
+            return Err("The download didn't match its checksum. Please try again.".into());
         }
     }
     fs::rename(&part, dest).map_err(err)
@@ -355,7 +373,8 @@ fn install_runtime(app: &AppHandle, cancel: &AtomicBool) -> Result<(), String> {
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).map_err(err)?;
     let archive = dir.join(if url.ends_with(".zip") { "runtime.zip" } else { "runtime.tar.gz" });
-    download(app, &url, &archive, "runtime", None, cancel)?;
+    let (_, sha, size) = runtime_spec().ok_or("Local AI isn't available on this platform yet")?;
+    download(app, &url, &archive, "runtime", Some((sha, size)), cancel)?;
     // bsdtar ships with macOS and Windows 10+, and reads both zip and tar.gz.
     let mut cmd = Command::new("tar");
     cmd.arg("-xf").arg(&archive).arg("-C").arg(&dir);
@@ -553,6 +572,13 @@ pub fn ai_stop(state: State<AiState>) {
     state.shutdown();
 }
 
+#[derive(Serialize)]
+pub struct ChatResult {
+    text: String,
+    /// "stop", "length" (hit max_tokens) or "cancelled".
+    finish: String,
+}
+
 /// Streams an OpenAI-compatible chat completion, forwarding content deltas.
 #[tauri::command]
 pub async fn ai_chat(
@@ -562,7 +588,7 @@ pub async fn ai_chat(
     key: Option<String>,
     body: serde_json::Value,
     on_token: Channel<String>,
-) -> Result<String, String> {
+) -> Result<ChatResult, String> {
     let cancel = Arc::new(AtomicBool::new(false));
     app.state::<AiState>().requests.lock().unwrap().insert(id.clone(), cancel.clone());
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -587,8 +613,10 @@ pub async fn ai_chat(
         })?;
         let reader = BufReader::new(resp.into_reader());
         let mut full = String::new();
+        let mut finish = String::new();
         for line in reader.lines() {
             if cancel.load(Ordering::Relaxed) {
+                finish = "cancelled".into();
                 break;
             }
             let line = line.map_err(err)?;
@@ -607,8 +635,11 @@ pub async fn ai_chat(
                     let _ = on_token.send(delta.to_string());
                 }
             }
+            if let Some(reason) = v["choices"][0]["finish_reason"].as_str() {
+                finish = reason.to_string();
+            }
         }
-        Ok(full)
+        Ok(ChatResult { text: full, finish })
     })
     .await
     .map_err(err)

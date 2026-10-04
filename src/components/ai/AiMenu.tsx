@@ -72,9 +72,10 @@ export function AiMenu() {
     };
   }, [menu]);
 
-  useEffect(() => {
-    if (menu) requestAnimationFrame(() => input.current?.focus());
-  }, [menu, sub]);
+  const placed = !!pos;
+  useLayoutEffect(() => {
+    if (menu && placed) input.current?.focus({ preventScroll: true });
+  }, [menu, sub, placed]);
 
   useEffect(() => {
     if (!menu) return;

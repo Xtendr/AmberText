@@ -30,7 +30,7 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
   const runTest = async () => {
     setTest({ state: "testing" });
     try {
-      const out = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], maxTokens: 8, temperature: 0 });
+      const { text: out } = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], maxTokens: 8, temperature: 0 });
       setTest({ state: "ok", msg: out.trim() ? `Connected — the model replied “${out.trim().slice(0, 40)}”` : "Connected" });
     } catch (e) {
       setTest({ state: "fail", msg: e instanceof Error ? e.message : String(e) });

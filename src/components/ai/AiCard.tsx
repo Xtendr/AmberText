@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { ArrowUp, Check, Copy, CornerDownLeft, Diff, Lock, RotateCcw, Square, TriangleAlert, X } from "lucide-react";
 import { aiHost } from "../../editor/aiInline";
 import { bridge } from "../../editor/bridge";
-import { accept, applyTitle, copyOutput, discard, primaryMode, refine, retry, setupAndRun, stop, useAiSession, type AcceptMode, type AiSession } from "../../ai/session";
+import { accept, applyTitle, canReplace, copyOutput, discard, primaryMode, refine, retry, setupAndRun, stop, useAiSession, type AcceptMode, type AiSession } from "../../ai/session";
 import { activeModelLabel, useAi } from "../../ai/engine";
 import { parseTitles } from "../../ai/actions";
 import { changeRatio, diffWords } from "../../ai/diff";
@@ -15,7 +15,7 @@ import { InstallStatus, ModelPicker, preferredTier } from "./ModelPicker";
 
 function primaryLabel(s: AiSession): string {
   const a = s.action;
-  if (a.kind === "rewrite") return "Replace";
+  if (a.kind === "rewrite") return canReplace(s) ? "Replace" : a.scope === "selection" ? "Insert below" : "Insert at top";
   if (a.id === "heading") return "Add heading";
   if (a.placement === "frontmatter") return "Add to front matter";
   if (a.placement === "top") return "Insert at top";
@@ -200,7 +200,7 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
         </div>
       )}
 
-      {done && (unchanged || s.warnings.length > 0 || s.truncated || (compact && s.action.demanding)) && (
+      {done && (unchanged || s.warnings.length > 0 || s.truncated || (s.incomplete && s.action.kind === "rewrite") || (compact && s.action.demanding)) && (
         <div className="ai-notes">
           {unchanged && (
             <span className="ai-note good">
@@ -213,6 +213,11 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
             </span>
           ))}
           {s.truncated && <span className="ai-note">Only the first part of this long document was read.</span>}
+          {s.incomplete && s.action.kind === "rewrite" && (
+            <span className="ai-note warn">
+              <TriangleAlert size={12} /> This stopped before the end, so it won't replace your text.
+            </span>
+          )}
           {compact && s.action.demanding && <span className="ai-note">The Compact model can be rough at this — Standard does better.</span>}
         </div>
       )}
@@ -269,7 +274,7 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
           <button className="icon-btn sm" onClick={() => void copyOutput()} data-tip="Copy">
             <Copy size={14} />
           </button>
-          {s.action.kind === "rewrite" && s.action.scope === "selection" && !unchanged && (
+          {s.action.kind === "rewrite" && s.action.scope === "selection" && !unchanged && canReplace(s) && (
             <button className="btn ghost sm" onClick={() => go("below")}>
               Insert below
             </button>
@@ -281,7 +286,7 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
           )}
           {s.action.kind !== "titles" && !unchanged && (
             <button className="btn primary sm" onClick={() => go(primaryMode(s))} data-tip={`${primaryLabel(s)}`} data-kbd="↵">
-              {s.action.kind === "rewrite" ? <Check size={13} strokeWidth={2.4} /> : <CornerDownLeft size={13} />}
+              {s.action.kind === "rewrite" && canReplace(s) ? <Check size={13} strokeWidth={2.4} /> : <CornerDownLeft size={13} />}
               {primaryLabel(s)}
             </button>
           )}

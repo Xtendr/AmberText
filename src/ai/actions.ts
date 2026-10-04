@@ -225,7 +225,7 @@ export function cleanOutput(raw: string, original: string, kind: AiKind): string
   const fence = /^```(?:markdown|md|text)?\s*\n([\s\S]*?)\n```$/i.exec(s);
   if (fence && !original.trimStart().startsWith("```")) s = fence[1].trim();
   s = s.replace(/^(?:sure|certainly|of course|here(?:'s| is| are)\b)[^\n]*:\s*\n+/i, "");
-  if (kind !== "answer" && /^["“].*["”]$/s.test(s) && !/^["“]/.test(original.trim())) s = s.slice(1, -1).trim();
+  if (kind === "rewrite" && /^["“].*["”]$/s.test(s) && !/["“”]/.test(s.slice(1, -1)) && !/^["“]/.test(original.trim())) s = s.slice(1, -1).trim();
   return s;
 }
 

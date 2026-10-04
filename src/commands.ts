@@ -311,7 +311,15 @@ const CODE_KEYS: Record<string, string> = {
 };
 
 export function eventCombo(e: KeyboardEvent): string {
-  let key = e.code.startsWith("Key") ? e.code.slice(3) : e.code.startsWith("Digit") ? e.code.slice(5) : (CODE_KEYS[e.code] ?? e.key);
+  // Letters follow the active layout (AZERTY, Dvorak); physical codes are only the fallback
+  // for non-Latin layouts and Option-modified characters.
+  let key = /^[a-z]$/i.test(e.key)
+    ? e.key
+    : e.code.startsWith("Key")
+      ? e.code.slice(3)
+      : e.code.startsWith("Digit")
+        ? e.code.slice(5)
+        : (CODE_KEYS[e.code] ?? e.key);
   if (key.length === 1) key = key.toUpperCase();
   const parts: string[] = [];
   const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -333,6 +341,7 @@ for (const c of COMMANDS) {
   if (!comboMap.has(normalized)) comboMap.set(normalized, c);
 }
 export function handleGlobalKey(e: KeyboardEvent): boolean {
+  if (e.defaultPrevented) return false;
   const combo = eventCombo(e);
   const cmd = comboMap.get(combo);
   if (!cmd) return false;

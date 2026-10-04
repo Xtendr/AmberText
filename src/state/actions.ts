@@ -111,6 +111,14 @@ export function ask(dialog: DialogState): Promise<{ action: string; value?: stri
   });
 }
 
+function moveGoal(from: string, to: string) {
+  const goals = getState().goals;
+  if (from === to || !(from in goals)) return;
+  const next = { ...goals, [to]: goals[from] };
+  delete next[from];
+  setState({ goals: next });
+}
+
 export async function setWordGoal() {
   const doc = activeDoc();
   if (!doc) return;
@@ -377,17 +385,59 @@ function scheduleAutosave(id: string) {
   );
 }
 
+const inflight = new Map<string, Promise<boolean>>();
+
 export async function saveDoc(id: string, opts: { auto?: boolean } = {}): Promise<boolean> {
   const doc = findDoc(id);
   if (!doc) return false;
   if (!doc.path) return opts.auto ? false : saveDocAs(id);
-  if (doc.saving) {
-    scheduleAutosave(id);
-    return false;
+  const running = inflight.get(id);
+  if (running) {
+    if (opts.auto) {
+      scheduleAutosave(id);
+      return false;
+    }
+    await running.catch(() => false);
+    return saveDoc(id, opts);
   }
+  // Never let a background save overwrite changes made to the file elsewhere.
+  if (opts.auto && doc.conflict) return false;
   window.clearTimeout(saveTimers.get(id));
+  const p = writeDoc(id, opts);
+  inflight.set(id, p);
+  try {
+    return await p;
+  } finally {
+    inflight.delete(id);
+  }
+}
+
+async function writeDoc(id: string, opts: { auto?: boolean }): Promise<boolean> {
+  const doc = findDoc(id);
+  if (!doc?.path) return false;
   const content = doc.content;
   const path = doc.path;
+  if (doc.mtime || doc.conflict) {
+    const disk = doc.mtime ? await fsApi.mtime(path).catch(() => null) : null;
+    if (doc.conflict || (disk !== null && disk > doc.mtime + 2)) {
+      if (opts.auto) {
+        patchDoc(id, { conflict: true });
+        toast(`“${displayName(doc)}” changed on disk`, "info", { label: "Reload", run: () => void reloadFromDisk(id) });
+        return false;
+      }
+      const res = await ask({
+        title: "This file changed on disk",
+        message: `“${displayName(doc)}” was modified by another app since you opened it. Saving replaces those changes with yours.`,
+        actions: [
+          { id: "reload", label: "Reload from disk" },
+          { id: "cancel", label: "Cancel" },
+          { id: "overwrite", label: "Save mine", kind: "primary" },
+        ],
+      });
+      if (res?.action === "reload") void reloadFromDisk(id);
+      if (res?.action !== "overwrite") return false;
+    }
+  }
   patchDoc(id, { saving: true });
   try {
     const mtime = await fsApi.writeText(path, doc.eol === "\r\n" ? content.replace(/\n/g, "\r\n") : content);
@@ -414,10 +464,23 @@ export async function saveDocAs(id: string): Promise<boolean> {
   if (!extname(path)) path += ".md";
   const other = getState().docs.find((d) => d.id !== id && samePath(d.path, path));
   if (other) {
+    if (isDirty(other)) {
+      const res = await ask({
+        title: `“${displayName(other)}” has unsaved changes`,
+        message: "It's open in another tab. Saving here replaces that file, and its unsaved edits will be lost.",
+        actions: [
+          { id: "cancel", label: "Cancel" },
+          { id: "replace", label: "Replace", kind: "danger" },
+        ],
+      });
+      if (res?.action !== "replace") return false;
+    }
+    window.clearTimeout(saveTimers.get(other.id));
     bridge.forget(other.id);
     setState((s) => ({ docs: s.docs.filter((d) => d.id !== other.id) }));
   }
-  patchDoc(id, { path, name: basename(path), mtime: 0 });
+  moveGoal(goalKey(doc), path);
+  patchDoc(id, { path, name: basename(path), mtime: 0, conflict: false });
   const ok = await saveDoc(id);
   if (ok) {
     addRecent(path);
@@ -730,6 +793,7 @@ export async function renameEntry(path: string, rawName: string) {
       return d;
     }),
     recentFiles: s.recentFiles.map((p) => (samePath(p, path) ? to : p)),
+    goals: Object.fromEntries(Object.entries(s.goals).map(([k, v]) => [samePath(k, path) ? to : isInside(k, path) ? to + k.slice(path.length) : k, v])),
     expanded: s.expanded.map((p) => (samePath(p, path) ? to : isInside(p, path) ? to + p.slice(path.length) : p)),
   }));
   await refreshTree();
@@ -738,9 +802,13 @@ export async function renameEntry(path: string, rawName: string) {
 
 export async function trashEntry(entry: FileEntry) {
   const bin = isMac ? "Trash" : "Recycle Bin";
+  const inside = (d: Doc) => !!d.path && (samePath(d.path, entry.path) || isInside(d.path, entry.path));
+  const unsaved = getState().docs.some((d) => inside(d) && isDirty(d));
   const res = await ask({
     title: `Move “${entry.name}” to the ${bin}?`,
-    message: entry.isDir ? "The folder and everything inside it will be moved." : "You can restore it from the " + bin + ".",
+    message:
+      (entry.isDir ? "The folder and everything inside it will be moved." : "You can restore it from the " + bin + ".") +
+      (unsaved ? " Unsaved changes in its open tab will be discarded." : ""),
     actions: [
       { id: "cancel", label: "Cancel" },
       { id: "trash", label: "Move to " + bin, kind: "danger" },
@@ -753,8 +821,9 @@ export async function trashEntry(entry: FileEntry) {
     toast(e instanceof Error ? e.message : String(e), "error");
     return;
   }
-  const affected = getState().docs.filter((d) => d.path && (samePath(d.path, entry.path) || isInside(d.path, entry.path)));
+  const affected = getState().docs.filter(inside);
   for (const d of affected) {
+    window.clearTimeout(saveTimers.get(d.id));
     bridge.forget(d.id);
     setState((s) => {
       const docs = s.docs.filter((x) => x.id !== d.id);

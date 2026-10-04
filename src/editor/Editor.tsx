@@ -8,13 +8,14 @@ import {
   keymap,
   placeholder,
   rectangularSelection,
+  type KeyBinding,
   type ViewUpdate,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { syntaxHighlighting, syntaxTree } from "@codemirror/language";
-import { search, searchKeymap } from "@codemirror/search";
+import { search, searchKeymap, searchPanelOpen } from "@codemirror/search";
 import { completionKeymap } from "@codemirror/autocomplete";
 import type { SyntaxNode } from "@lezer/common";
 import { getState, setState, useStore, type Doc, type Settings } from "../state/store";
@@ -96,6 +97,19 @@ function onUpdate(u: ViewUpdate) {
   bridge.emit(u);
 }
 
+/** Mod-Shift-L cycles the theme and Mod-G jumps to a heading unless a search is open. */
+const editorSearchKeymap: KeyBinding[] = searchKeymap
+  .filter((b) => b.key !== "Mod-Shift-l")
+  .map((b) => {
+    if (b.key !== "Mod-g") return b;
+    const { run, shift } = b;
+    return {
+      ...b,
+      run: run && ((v: EditorView) => searchPanelOpen(v.state) && run(v)),
+      shift: shift && ((v: EditorView) => searchPanelOpen(v.state) && shift(v)),
+    };
+  });
+
 const baseExtensions: Extension[] = [
   history(),
   drawSelection({ cursorBlinkRate: 1000 }),
@@ -111,7 +125,7 @@ const baseExtensions: Extension[] = [
   smartEditing(),
   aiTargetField,
   aiFlashField,
-  keymap.of([...formattingKeymap, ...completionKeymap, ...searchKeymap, ...historyKeymap, indentWithTab, ...defaultKeymap]),
+  keymap.of([...formattingKeymap, ...completionKeymap, ...editorSearchKeymap, ...historyKeymap, indentWithTab, ...defaultKeymap]),
   placeholder("Start writing — or type / to insert a block"),
   EditorView.updateListener.of(onUpdate),
   EditorView.domEventHandlers({

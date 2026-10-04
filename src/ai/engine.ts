@@ -170,9 +170,15 @@ export interface ChatOptions {
 
 let reqSeq = 0;
 
-export async function chat(opts: ChatOptions): Promise<string> {
+export interface ChatResult {
+  text: string;
+  /** "stop", "length" (hit the token cap) or "cancelled". */
+  finish: string;
+}
+
+export async function chat(opts: ChatOptions): Promise<ChatResult> {
   const ep = await endpoint();
-  if (opts.signal?.aborted) return "";
+  if (opts.signal?.aborted) return { text: "", finish: "cancelled" };
   const body = {
     model: ep.model,
     messages: opts.messages,
@@ -189,7 +195,7 @@ export async function chat(opts: ChatOptions): Promise<string> {
     const abort = () => void invoke("ai_cancel", { id });
     opts.signal?.addEventListener("abort", abort);
     try {
-      return await invoke<string>("ai_chat", { id, url: ep.url, key: ep.key || null, body, onToken: channel });
+      return await invoke<ChatResult>("ai_chat", { id, url: ep.url, key: ep.key || null, body, onToken: channel });
     } finally {
       opts.signal?.removeEventListener("abort", abort);
     }
@@ -197,7 +203,7 @@ export async function chat(opts: ChatOptions): Promise<string> {
   return await fetchStream(ep.url, ep.key, body, opts);
 }
 
-async function fetchStream(url: string, key: string, body: unknown, opts: ChatOptions): Promise<string> {
+async function fetchStream(url: string, key: string, body: unknown, opts: ChatOptions): Promise<ChatResult> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
@@ -207,7 +213,7 @@ async function fetchStream(url: string, key: string, body: unknown, opts: ChatOp
     if (opts.signal?.aborted) return null;
     throw new Error(`Couldn't reach the model — ${e instanceof Error ? e.message : e}`);
   });
-  if (!res) return "";
+  if (!res) return { text: "", finish: "cancelled" };
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     let msg = text;
@@ -222,6 +228,7 @@ async function fetchStream(url: string, key: string, body: unknown, opts: ChatOp
   const decoder = new TextDecoder();
   let buf = "";
   let full = "";
+  let finish = "";
   try {
     for (;;) {
       const { value, done } = await reader.read();
@@ -233,7 +240,7 @@ async function fetchStream(url: string, key: string, body: unknown, opts: ChatOp
         buf = buf.slice(nl + 1);
         if (!line.startsWith("data:")) continue;
         const data = line.slice(5).trim();
-        if (data === "[DONE]") return full;
+        if (data === "[DONE]") return { text: full, finish };
         try {
           const json = JSON.parse(data);
           if (json.error) throw new Error(json.error.message ?? "The model returned an error");
@@ -242,6 +249,7 @@ async function fetchStream(url: string, key: string, body: unknown, opts: ChatOp
             full += delta;
             opts.onToken?.(delta);
           }
+          if (json.choices?.[0]?.finish_reason) finish = json.choices[0].finish_reason;
         } catch (e) {
           if (e instanceof SyntaxError) continue;
           throw e;
@@ -249,8 +257,8 @@ async function fetchStream(url: string, key: string, body: unknown, opts: ChatOp
       }
     }
   } catch (e) {
-    if (opts.signal?.aborted) return full;
+    if (opts.signal?.aborted) return { text: full, finish: "cancelled" };
     throw e;
   }
-  return full;
+  return { text: full, finish };
 }

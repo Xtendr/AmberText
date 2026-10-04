@@ -148,7 +148,9 @@ fn list_tree(root: String) -> Result<Vec<FileEntry>, String> {
 #[tauri::command]
 fn read_text(path: String) -> Result<TextFile, String> {
     let bytes = fs::read(&path).map_err(err)?;
-    let mut content = String::from_utf8_lossy(&bytes).into_owned();
+    // Legacy files are almost always Windows-1252; decoding them as such keeps
+    // characters like æ ø é intact instead of turning them into U+FFFD on save.
+    let mut content = String::from_utf8(bytes).unwrap_or_else(|e| e.into_bytes().iter().map(|&b| cp1252(b)).collect());
     if content.starts_with('\u{feff}') {
         content.remove(0);
     }
@@ -158,11 +160,20 @@ fn read_text(path: String) -> Result<TextFile, String> {
     })
 }
 
+fn cp1252(b: u8) -> char {
+    const HIGH: [char; 32] = [
+        '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8d}', 'Ž', '\u{8f}',
+        '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}', 'ž', 'Ÿ',
+    ];
+    if (0x80..0xa0).contains(&b) { HIGH[(b - 0x80) as usize] } else { b as char }
+}
+
 /// Writes through a sibling temp file and renames it into place so a crash
 /// mid-write never leaves a truncated document behind.
 #[tauri::command]
 fn write_text(path: String, content: String) -> Result<u64, String> {
-    let target = PathBuf::from(&path);
+    // Write through symlinks to the real file rather than replacing the link.
+    let target = fs::canonicalize(&path).unwrap_or_else(|_| PathBuf::from(&path));
     let dir = target.parent().ok_or("Invalid path")?;
     fs::create_dir_all(dir).map_err(err)?;
     let file_name = target
@@ -171,7 +182,10 @@ fn write_text(path: String, content: String) -> Result<u64, String> {
         .to_string_lossy()
         .into_owned();
     let tmp = dir.join(format!(".{file_name}.margin-tmp"));
-    let atomic = fs::write(&tmp, content.as_bytes()).and_then(|_| fs::rename(&tmp, &target));
+    let perms = fs::metadata(&target).ok().map(|m| m.permissions());
+    let atomic = fs::write(&tmp, content.as_bytes())
+        .and_then(|_| perms.map_or(Ok(()), |p| fs::set_permissions(&tmp, p)))
+        .and_then(|_| fs::rename(&tmp, &target));
     if atomic.is_err() {
         let _ = fs::remove_file(&tmp);
         fs::write(&target, content.as_bytes()).map_err(err)?;
