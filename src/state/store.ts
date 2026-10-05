@@ -40,7 +40,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   accent: "vermilion",
-  material: true,
+  material: false,
   font: "sans",
   fontSize: 18,
   lineHeight: 1.7,
@@ -199,10 +199,11 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "margin:prefs",
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (version < 2 && p.settings) p.settings = { ...p.settings, font: "sans", quietChrome: false };
+        if (version < 3 && p.settings) p.settings = { ...p.settings, material: false };
         return p as AppState;
       },
       partialize: (s) => ({

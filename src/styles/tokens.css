@@ -46,8 +46,8 @@
 /* ---------- Light: paper ---------- */
 [data-theme="light"] {
   color-scheme: light;
-  --chrome: #efede8;
-  --chrome-material: rgba(244, 242, 237, 0.42);
+  --chrome: #edebe6;
+  --chrome-material: rgba(237, 235, 230, 0.82);
   --sidebar: transparent;
   --sheet: #fdfcfa;
   --sheet-border: rgba(40, 32, 18, 0.085);
@@ -105,8 +105,8 @@
 /* ---------- Dark: ink ---------- */
 [data-theme="dark"] {
   color-scheme: dark;
-  --chrome: #171716;
-  --chrome-material: rgba(23, 23, 22, 0.35);
+  --chrome: #151514;
+  --chrome-material: rgba(17, 17, 16, 0.88);
   --sidebar: transparent;
   --sheet: #1e1e1d;
   --sheet-border: rgba(255, 250, 240, 0.07);
