@@ -52,7 +52,7 @@ function Welcome() {
         <div className="welcome-mark">
           <span className="welcome-rule" />
           <div>
-            <h1 className="welcome-title">Margin</h1>
+            <h1 className="welcome-title">AmberText</h1>
             <p className="welcome-sub">A quiet place to write.</p>
           </div>
         </div>
@@ -256,7 +256,7 @@ export function Sheet() {
     return d ? displayName(d) : "";
   });
   return (
-    <main className="sheet" aria-label={name || "Margin"}>
+    <main className="sheet" aria-label={name || "AmberText"}>
       <div className="doc-area" data-mode={mode}>
         <div className="pane pane-editor">
           <Editor />

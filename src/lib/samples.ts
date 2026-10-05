@@ -1,8 +1,8 @@
-export const WELCOME_TITLE = "Welcome to Margin";
+export const WELCOME_TITLE = "Welcome to AmberText";
 
-export const WELCOME_DOC = `# Welcome to Margin
+export const WELCOME_DOC = `# Welcome to AmberText
 
-Margin is a quiet place to write. What you see is *styled*, but underneath it is always **plain Markdown** — portable, future‑proof, and yours.
+AmberText is a quiet place to write. What you see is *styled*, but underneath it is always **plain Markdown** — portable, future‑proof, and yours.
 
 Move your cursor into any styled text and its syntax gently reappears. Move away and it gets out of your way again.
 
@@ -20,7 +20,7 @@ Move your cursor into any styled text and its syntax gently reappears. Move away
 
 ## Writing intelligence
 
-Select a sentence and press **Ctrl J** to improve it, fix its grammar, change its tone or translate it. With nothing selected, Margin can continue your draft, suggest titles, pull out action items or review the whole document.
+Select a sentence and press **Ctrl J** to improve it, fix its grammar, change its tone or translate it. With nothing selected, AmberText can continue your draft, suggest titles, pull out action items or review the whole document.
 
 It runs on a small model on your own computer — private, offline, and free. Pick one in **Settings → AI** the first time you ask.
 
@@ -28,7 +28,7 @@ It runs on a small model on your own computer — private, offline, and free. Pi
 
 Open **Settings** with **Ctrl ,** to choose a typeface, accent colour, line width and theme. Changes apply instantly, so you can tune the page while you look at it.
 
-- [x] Open Margin
+- [x] Open AmberText
 - [ ] Write something you care about
 - [ ] Try the three typefaces: *Serif*, *Sans* and *Mono*
 
@@ -45,7 +45,7 @@ Code blocks are highlighted for over a hundred languages:
 
 \`\`\`ts
 function greet(name: string) {
-  return \`Hello, \${name} — welcome to Margin.\`;
+  return \`Hello, \${name} — welcome to AmberText.\`;
 }
 \`\`\`
 
@@ -89,7 +89,7 @@ Slow morning. Coffee, rain on the window, and finally some time to think about t
 
 Shipped the first prototype. It's rough, but the core loop feels right.
 `,
-  "Projects/Margin roadmap.md": `# Margin roadmap
+  "Projects/AmberText roadmap.md": `# AmberText roadmap
 
 ## Now
 - [x] Live preview editor

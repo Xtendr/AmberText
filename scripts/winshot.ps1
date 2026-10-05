@@ -1,4 +1,4 @@
-# Renders the Margin desktop window (only that window, even if covered) to .shots/native.png.
+# Renders the AmberText desktop window (only that window, even if covered) to .shots/native.png.
 param([string]$Out = ".shots/native.png")
 Add-Type -AssemblyName System.Drawing
 Add-Type @"

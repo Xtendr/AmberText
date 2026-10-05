@@ -87,7 +87,7 @@ export function App() {
   }, [settings.font, settings.fontSize, settings.lineHeight, settings.measure]);
 
   useEffect(() => {
-    void win.setTitle(title ? `${title} — Margin` : "Margin");
+    void win.setTitle(title ? `${title} — AmberText` : "AmberText");
   }, [title]);
 
   // Global keyboard, chrome fading and modifier tracking.

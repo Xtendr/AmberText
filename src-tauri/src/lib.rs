@@ -396,7 +396,7 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
         }
         b.build(app)
     };
-    let app_menu = SubmenuBuilder::new(app, "Margin")
+    let app_menu = SubmenuBuilder::new(app, "AmberText")
         .about(None)
         .separator()
         .item(&item("settings", "Settings…", Some("CmdOrCtrl+,"))?)
@@ -541,7 +541,7 @@ pub fn run() {
             ai::ai_cancel
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Margin")
+        .expect("error while building AmberText")
         .run(|_app, _event| {
             if let tauri::RunEvent::Exit = &_event {
                 _app.state::<ai::AiState>().shutdown();

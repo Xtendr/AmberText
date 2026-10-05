@@ -1,8 +1,8 @@
 [package]
 name = "margin"
 version = "1.0.0"
-description = "Margin - a designer-first Markdown editor"
-authors = ["Margin"]
+description = "AmberText - a designer-first Markdown editor"
+authors = ["AmberText"]
 edition = "2021"
 
 [lib]

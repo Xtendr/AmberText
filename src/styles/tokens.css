@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Margin — design tokens
+   AmberText — design tokens
    Warm paper & ink. One accent. Typography does the heavy lifting.
    ========================================================================== */
 
@@ -162,6 +162,7 @@
 }
 
 /* ---------- Accents ---------- */
+[data-accent="amber"] { --accent: #b06a08; }
 [data-accent="vermilion"] { --accent: #d9512c; }
 [data-accent="ink"] { --accent: #4c58d0; }
 [data-accent="moss"] { --accent: #3f7d58; }
@@ -169,6 +170,7 @@
 [data-accent="ocean"] { --accent: #1c7aa3; }
 [data-accent="graphite"] { --accent: #4b5059; }
 
+[data-theme="dark"][data-accent="amber"] { --accent: #f2b544; }
 [data-theme="dark"][data-accent="vermilion"] { --accent: #ff7a52; }
 [data-theme="dark"][data-accent="ink"] { --accent: #8d97ff; }
 [data-theme="dark"][data-accent="moss"] { --accent: #78c597; }

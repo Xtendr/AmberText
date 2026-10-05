@@ -34,7 +34,7 @@ function Setup() {
     return (
       <div className="ai-setup">
         <p className="ai-setup-lead">
-          Models are downloaded and run by the Margin desktop app. In this preview, connect a model server you already run, like Ollama or LM Studio.
+          Models are downloaded and run by the AmberText desktop app. In this preview, connect a model server you already run, like Ollama or LM Studio.
         </p>
         <div className="ai-actions">
           <button className="btn primary sm" onClick={openSettings}>
@@ -47,7 +47,7 @@ function Setup() {
   return (
     <div className="ai-setup">
       <p className="ai-setup-lead">
-        <Lock size={12} strokeWidth={2.2} /> Margin's writing intelligence runs entirely on this computer. Your text never leaves it — no account, no subscription.
+        <Lock size={12} strokeWidth={2.2} /> AmberText's writing intelligence runs entirely on this computer. Your text never leaves it — no account, no subscription.
       </p>
       {installing ? (
         <InstallStatus tier={installing} />

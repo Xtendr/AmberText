@@ -1,7 +1,7 @@
 //! Local writing intelligence: downloads a pinned llama.cpp server build plus a
 //! GGUF model on demand, runs it as a sidecar bound to 127.0.0.1, and proxies
 //! streaming chat completions to the webview. Document text never leaves the
-//! machine unless the user points Margin at a remote endpoint themselves.
+//! machine unless the user points AmberText at a remote endpoint themselves.
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -259,7 +259,7 @@ fn agent() -> ureq::Agent {
     ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_secs(20))
         .timeout_read(Duration::from_secs(60))
-        .user_agent(concat!("Margin/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("AmberText/", env!("CARGO_PKG_VERSION")))
         .build()
 }
 

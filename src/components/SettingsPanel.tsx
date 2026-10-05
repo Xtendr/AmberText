@@ -9,6 +9,7 @@ import { AiSettings } from "./ai/AiSettings";
 type Section = "appearance" | "writing" | "editor" | "ai" | "shortcuts";
 
 const ACCENTS: { id: Accent; name: string; color: string }[] = [
+  { id: "amber", name: "Amber", color: "#b06a08" },
   { id: "vermilion", name: "Vermilion", color: "#d9512c" },
   { id: "ink", name: "Ink", color: "#4c58d0" },
   { id: "moss", name: "Moss", color: "#3f7d58" },
@@ -341,7 +342,7 @@ export function SettingsPanel() {
             <div className="set-group about">
               <span className="brand-mark" aria-hidden />
               <div>
-                <div className="about-name">Margin</div>
+                <div className="about-name">AmberText</div>
                 <div className="about-meta">Version 1.0 · Markdown, beautifully.</div>
               </div>
             </div>

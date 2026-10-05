@@ -77,7 +77,7 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
         {s.aiProvider === "local" ? (
           supported ? (
             <>
-              <p className="set-desc ai-para">Download a model once and Margin runs it on {deviceName}, offline. Standard is the best fit for most computers; you can switch or remove models any time.</p>
+              <p className="set-desc ai-para">Download a model once and AmberText runs it on {deviceName}, offline. Standard is the best fit for most computers; you can switch or remove models any time.</p>
               <ModelPicker value={s.aiModel} onChange={(t) => set({ aiModel: t })} manage />
               {error && <p className="ai-error-text">{error}</p>}
               <div className="ai-row-links">
@@ -97,7 +97,7 @@ export function AiSettings({ Switch }: { Switch: (p: { value: boolean; onChange:
           ) : (
             <div className="ai-browser-note">
               <p>
-                Models are downloaded and run by the Margin desktop app. This browser preview can't run them, but you can connect your own server to try AI here.
+                Models are downloaded and run by the AmberText desktop app. This browser preview can't run them, but you can connect your own server to try AI here.
               </p>
               <button className="btn sm" onClick={() => set({ aiProvider: "custom" })}>
                 Use your own server

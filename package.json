@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Margin - a designer-first Markdown editor",
+  "description": "AmberText - a designer-first Markdown editor",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

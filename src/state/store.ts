@@ -4,7 +4,7 @@ import type { FileEntry } from "../lib/platform";
 
 export type ViewMode = "write" | "split" | "read";
 export type ThemePref = "system" | "light" | "dark";
-export type Accent = "vermilion" | "ink" | "moss" | "plum" | "ocean" | "graphite";
+export type Accent = "amber" | "vermilion" | "ink" | "moss" | "plum" | "ocean" | "graphite";
 export type WritingFont = "serif" | "sans" | "mono";
 export type SidebarTab = "files" | "outline";
 
@@ -30,7 +30,7 @@ export interface Settings {
   aiEnabled: boolean;
   /** Active local model tier, once one has been downloaded. */
   aiModel: "compact" | "standard" | "enhanced" | null;
-  /** "local" runs Margin's own runtime; "custom" talks to an OpenAI-compatible server (Ollama, LM Studio…). */
+  /** "local" runs AmberText's own runtime; "custom" talks to an OpenAI-compatible server (Ollama, LM Studio…). */
   aiProvider: "local" | "custom";
   aiEndpoint: string;
   aiEndpointModel: string;
@@ -39,7 +39,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
-  accent: "vermilion",
+  accent: "amber",
   material: false,
   font: "sans",
   fontSize: 18,
@@ -199,11 +199,12 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "margin:prefs",
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (version < 2 && p.settings) p.settings = { ...p.settings, font: "sans", quietChrome: false };
         if (version < 3 && p.settings) p.settings = { ...p.settings, material: false };
+        if (version < 4 && p.settings?.accent === "vermilion") p.settings = { ...p.settings, accent: "amber" };
         return p as AppState;
       },
       partialize: (s) => ({

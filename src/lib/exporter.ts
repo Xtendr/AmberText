@@ -52,7 +52,7 @@ export async function buildStandaloneHtml(content: string, title: string, baseDi
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="Margin">
+<meta name="generator" content="AmberText">
 <title>${escapeHtml(title)}</title>
 ${katex}<style>${EXPORT_VARS}
 :root { --font-writing: ${EXPORT_FONTS[getState().settings.font]}; }

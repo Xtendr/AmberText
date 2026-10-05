@@ -39,7 +39,7 @@ function AppMenuButton() {
       item("palette", "Command palette…"),
       item("settings", "Settings…"),
       item("welcome", "Welcome guide"),
-      ...(isTauri ? [{ separator: true as const }, { label: "Quit Margin", shortcut: "Alt+F4", run: () => void win.close() }] : []),
+      ...(isTauri ? [{ separator: true as const }, { label: "Quit AmberText", shortcut: "Alt+F4", run: () => void win.close() }] : []),
     ]);
     const unsub = useStore.subscribe((s) => {
       if (!s.contextMenu) {
@@ -51,7 +51,7 @@ function AppMenuButton() {
   return (
     <button ref={ref} className="brand-btn" onClick={show} aria-expanded={open} aria-haspopup="menu" data-tip="Menu">
       <span className="brand-mark" aria-hidden="true" />
-      Margin
+      AmberText
       <ChevronDown size={13} className="chev" />
     </button>
   );
