@@ -196,36 +196,14 @@ kbd {
   color: var(--text-3);
   margin-left: -3px;
 }
+/* The logomark is brand amber whatever the accent. */
 .brand-mark {
   width: 18px;
   height: 18px;
-  border-radius: 5px;
-  background: var(--inverse);
-  position: relative;
-  overflow: hidden;
   flex-shrink: 0;
-}
-.brand-mark::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 0;
-  bottom: 0;
-  width: 1.5px;
-  background: var(--accent-fill);
-}
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  left: 8.5px;
-  top: 5.5px;
-  width: 6px;
-  height: 7px;
-  background:
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 0 / 6px 1.5px no-repeat,
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 3px / 4.5px 1px no-repeat,
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 5.5px / 5.5px 1px no-repeat;
-  opacity: 0.9;
+  background: #f0a830;
+  -webkit-mask: url("../assets/logomark.svg") center / contain no-repeat;
+  mask: url("../assets/logomark.svg") center / contain no-repeat;
 }
 
 .icon-btn {
@@ -2100,21 +2078,6 @@ button.status-item:hover {
 .about .brand-mark {
   width: 40px;
   height: 40px;
-  border-radius: 11px;
-}
-.about .brand-mark::before {
-  left: 11px;
-  width: 3px;
-}
-.about .brand-mark::after {
-  left: 19px;
-  top: 12px;
-  width: 14px;
-  height: 16px;
-  background:
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 0 / 13px 3px no-repeat,
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 7px / 10px 2px no-repeat,
-    linear-gradient(var(--inverse-text), var(--inverse-text)) 0 12px / 12px 2px no-repeat;
 }
 .about-name {
   font-family: var(--font-serif);
