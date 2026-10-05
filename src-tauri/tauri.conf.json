@@ -1,8 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AmberText",
+  "mainBinaryName": "AmberText",
   "version": "1.0.0",
-  "identifier": "studio.margin.editor",
+  "identifier": "studio.ambertext.editor",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
