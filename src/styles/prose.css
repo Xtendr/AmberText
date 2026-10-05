@@ -303,14 +303,14 @@
   transition: background 160ms;
 }
 .prose .task-check:checked {
-  background: var(--accent);
+  background: var(--accent-fill, var(--accent));
   box-shadow: none;
 }
 .prose .task-check:checked::after {
   content: "";
   width: 0.5em;
   height: 0.28em;
-  border: solid var(--text-on-accent, #fff);
+  border: solid var(--on-accent-fill, var(--text-on-accent, #fff));
   border-width: 0 0 2px 2px;
   transform: translateY(-0.05em) rotate(-45deg);
 }

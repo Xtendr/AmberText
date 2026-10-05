@@ -170,13 +170,24 @@
 [data-accent="ocean"] { --accent: #1c7aa3; }
 [data-accent="graphite"] { --accent: #4b5059; }
 
-[data-theme="dark"][data-accent="amber"] { --accent: #f2b544; }
+[data-theme="dark"][data-accent="amber"] { --accent: #f0a830; }
 [data-theme="dark"][data-accent="vermilion"] { --accent: #ff7a52; }
 [data-theme="dark"][data-accent="ink"] { --accent: #8d97ff; }
 [data-theme="dark"][data-accent="moss"] { --accent: #78c597; }
 [data-theme="dark"][data-accent="plum"] { --accent: #c49cf3; }
 [data-theme="dark"][data-accent="ocean"] { --accent: #62c0e6; }
 [data-theme="dark"][data-accent="graphite"] { --accent: #c3c8d0; }
+
+/* Filled surfaces (buttons, checks, switches) can use a brighter shade than
+   accent-coloured text, as long as what sits on them stays readable. */
+:root {
+  --accent-fill: var(--accent);
+  --on-accent-fill: var(--text-on-accent);
+}
+[data-theme="light"][data-accent="amber"] {
+  --accent-fill: #f0a830;
+  --on-accent-fill: #1f1e1b;
+}
 
 :root {
   --accent-soft: color-mix(in oklab, var(--accent) 13%, transparent);

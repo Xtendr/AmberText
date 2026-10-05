@@ -14,7 +14,8 @@ const EXPORT_VARS = `
   --text: #1f1e1b; --text-2: #5e5b54; --text-3: #8f8b82; --text-4: #b5b1a8;
   --line: rgba(30,25,15,.09); --line-strong: rgba(30,25,15,.16);
   --surface-1: #faf9f6; --surface-2: #f3f1ec; --sheet: #ffffff;
-  --accent: #d9512c; --accent-soft: rgba(217,81,44,.12);
+  --accent: #b06a08; --accent-soft: rgba(176,106,8,.12);
+  --accent-fill: #f0a830; --on-accent-fill: #1f1e1b;
   --code-bg: #f4f2ed;
   --font-ui: "Inter", "Segoe UI", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, Consolas, monospace;

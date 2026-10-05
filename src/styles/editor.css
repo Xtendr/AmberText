@@ -372,7 +372,7 @@
   width: 78%;
   height: 78%;
   fill: none;
-  stroke: var(--text-on-accent);
+  stroke: var(--on-accent-fill);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -380,7 +380,7 @@
   stroke-dashoffset: 14;
 }
 .cm-task-box.is-checked {
-  background: var(--accent);
+  background: var(--accent-fill);
   box-shadow: none;
 }
 .cm-task-box.is-checked svg {
@@ -895,8 +895,8 @@
     color var(--t-fast);
 }
 li[aria-selected] .slash-icon {
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
   box-shadow: none;
 }
 .slash-option .cm-completionLabel {

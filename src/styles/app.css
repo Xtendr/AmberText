@@ -212,7 +212,7 @@ kbd {
   top: 0;
   bottom: 0;
   width: 1.5px;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 .brand-mark::after {
   content: "";
@@ -1195,15 +1195,15 @@ button.status-item:hover {
   transform: translateY(0.5px);
 }
 .btn.primary {
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
   box-shadow:
-    0 0 0 0.5px color-mix(in oklab, var(--accent) 80%, black),
-    0 1px 2px color-mix(in oklab, var(--accent) 35%, transparent),
+    0 0 0 0.5px color-mix(in oklab, var(--accent-fill) 80%, black),
+    0 1px 2px color-mix(in oklab, var(--accent-fill) 35%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 .btn.primary:hover {
-  background: color-mix(in oklab, var(--accent) 90%, black);
+  background: color-mix(in oklab, var(--accent-fill) 90%, black);
 }
 .btn.danger {
   background: var(--danger);
@@ -1514,8 +1514,8 @@ button.status-item:hover {
 }
 .menu-item:hover:not(:disabled),
 .menu-item.is-active {
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
 }
 .menu-item:hover:not(:disabled) .mi-icon,
 .menu-item:hover:not(:disabled) .mi-keys,
@@ -1944,7 +1944,7 @@ button.status-item:hover {
   background: #45433f;
 }
 .thumb-sheet i.acc {
-  background: var(--accent) !important;
+  background: var(--accent-fill) !important;
   width: 30%;
 }
 
@@ -2039,7 +2039,7 @@ button.status-item:hover {
   transition: transform var(--t-base) var(--ease-out);
 }
 .switch[aria-checked="true"] {
-  background: var(--accent);
+  background: var(--accent-fill);
   box-shadow: none;
 }
 .switch[aria-checked="true"]::after {
