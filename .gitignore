@@ -5,3 +5,6 @@ src-tauri/gen/schemas
 *.log
 .DS_Store
 .shots
+
+# Local Claude Code preview config
+.claude/
