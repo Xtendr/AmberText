@@ -12,8 +12,8 @@
 </p>
 
 <p align="center">
-  A free, open-source Markdown editor for Mac and Windows. You write in clean, styled text, and every note stays a plain<br>
-  Markdown file on your own computer: portable, readable anywhere, and yours.
+  A free, open-source Markdown editor for Mac and Windows.<br>
+  You write in clean, styled text, and every note stays a plain Markdown file on your own computer: portable, readable anywhere, and yours.
 </p>
 
 <p align="center">
