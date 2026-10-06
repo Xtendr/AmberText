@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  A Markdown editor for Mac and Windows. You write in clean, styled text, and every note stays a plain<br>
+  A free, open-source Markdown editor for Mac and Windows. You write in clean, styled text, and every note stays a plain<br>
   Markdown file on your own computer: portable, readable anywhere, and yours.
 </p>
 
@@ -29,10 +29,7 @@
 
 <br>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.webp">
-  <img src="docs/readme/hero-light.webp" alt="AmberText with a folder of team documents open: a product spec with its properties card, a callout and an embedded image">
-</picture>
+![AmberText on Mac: a team onboarding guide with a callout and a timeline diagram, and a board update with a metrics table and pie chart in dark mode](docs/readme/hero.webp)
 
 ```
 Open a folder  →  Write in styled text  →  It saves as plain Markdown  →  Open it anywhere
