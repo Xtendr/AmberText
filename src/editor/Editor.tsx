@@ -221,8 +221,6 @@ setImagePicker((view, from) => {
   });
 });
 
-let launched = false;
-
 export function Editor() {
   const host = useRef<HTMLDivElement>(null);
   const activeId = useStore((s) => s.activeId);
@@ -262,9 +260,8 @@ export function Editor() {
     view.setState(state);
     reconfigure(view);
     const scroll = saved?.scroll ?? 0;
-    // On launch, open on the clean rendered page unless there's nothing to read yet.
-    const autofocus = launched || !doc.content.trim();
-    launched = true;
+    // Open on the clean rendered page unless there's nothing to read yet; the cursor appears where you click.
+    const autofocus = !doc.content.trim();
     requestAnimationFrame(() => {
       view.scrollDOM.scrollTop = scroll;
       if (autofocus && getState().settings.viewMode !== "read") view.focus();

@@ -201,7 +201,7 @@ function slashSource(context: CompletionContext): CompletionResult | null {
     section: query ? undefined : SECTIONS[item.section],
     boost: query ? 100 - i : undefined,
   }));
-  return { from: match.from, to: context.pos, options, filter: false, validFor: /^\/[\w-]*$/ };
+  return { from: match.from, to: context.pos, options, filter: false };
 }
 
 export function slashCommands() {

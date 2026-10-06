@@ -156,7 +156,7 @@ export function splitFrontmatter(src: string): { data: [string, string][]; body:
   if (!m) return null;
   const data: [string, string][] = [];
   for (const line of m[1].split(/\r?\n/)) {
-    const kv = /^([\w.-]+)\s*:\s*(.*)$/.exec(line);
+    const kv = /^([\w.-][\w. -]*?)\s*:\s*(.*)$/.exec(line);
     if (kv) data.push([kv[1], kv[2].replace(/^["']|["']$/g, "")]);
   }
   const lines = m[0].split("\n").length - 1;
