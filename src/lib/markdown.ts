@@ -6,6 +6,7 @@ import hljs from "highlight.js/lib/common";
 import DOMPurify from "dompurify";
 import { fileSrc } from "./platform";
 import { isExternalUrl, resolvePath } from "./paths";
+import { plainInline } from "./text";
 
 export interface RenderEnv {
   baseDir?: string | null;
@@ -93,7 +94,8 @@ md.core.ruler.before("inline", "task_lists", (state) => {
     if (!m) continue;
     const checked = m[1] !== " ";
     const line = t.map ? t.map[0] : tokens[i - 2].map?.[0] ?? 0;
-    t.content = `<input type="checkbox" class="task-check" data-line="${line}"${checked ? " checked" : ""}> ` + t.content.slice(m[0].length);
+    const label = escapeHtml(plainInline(t.content.slice(m[0].length)) || "Task");
+    t.content = `<input type="checkbox" class="task-check" data-line="${line}" aria-label="${label}"${checked ? " checked" : ""}> ` + t.content.slice(m[0].length);
     tokens[i - 2].attrJoin("class", checked ? "task-item done" : "task-item");
     for (let j = i - 3; j >= 0; j--) {
       const open = tokens[j];

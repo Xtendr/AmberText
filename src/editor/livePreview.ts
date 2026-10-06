@@ -4,6 +4,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, typ
 import type { SyntaxNode, Tree } from "@lezer/common";
 import katex from "katex";
 import { escapeHtml, renderFragment, splitFrontmatter } from "../lib/markdown";
+import { plainInline } from "../lib/text";
 import { cachedMermaid, renderMermaid } from "../lib/mermaid";
 import { toggleTaskAt } from "./commands";
 
@@ -139,18 +140,31 @@ function listLineDeco(indent: number, hang: number) {
 
 let lastTaskToggle = 0;
 
+/** Screen readers announce a task's checkbox by the task's own text. */
+const taskLabel = (text: string) => plainInline(text) || "Task";
+
 class CheckboxWidget extends WidgetType {
-  constructor(readonly checked: boolean) {
+  constructor(
+    readonly checked: boolean,
+    readonly label: string,
+  ) {
     super();
   }
   eq(o: CheckboxWidget) {
-    return o.checked === this.checked;
+    return o.checked === this.checked && o.label === this.label;
+  }
+  /** Typing in the task only renames the checkbox; the box itself stays put. */
+  updateDOM(dom: HTMLElement) {
+    if (dom.classList.contains("is-checked") !== this.checked) return false;
+    dom.setAttribute("aria-label", this.label);
+    return true;
   }
   toDOM(view: EditorView) {
     const el = document.createElement("span");
     el.className = "cm-task-box" + (this.checked ? " is-checked" : "") + (Date.now() - lastTaskToggle < 400 ? " just-toggled" : "");
     el.setAttribute("role", "checkbox");
     el.setAttribute("aria-checked", String(this.checked));
+    el.setAttribute("aria-label", this.label);
     el.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.6L12 5.6"/></svg>`;
     el.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -482,7 +496,7 @@ function buildInline(view: EditorView): DecorationSet {
               const checked = /x/i.test(doc.sliceString(task.from, task.to));
               if (!touches(state, start, end)) {
                 out.push(hide.range(start, task.from));
-                out.push(Decoration.replace({ widget: new CheckboxWidget(checked) }).range(task.from, end));
+                out.push(Decoration.replace({ widget: new CheckboxWidget(checked, taskLabel(doc.sliceString(end, line.to))) }).range(task.from, end));
                 hanging(1.42);
               } else {
                 out.push(mark("cm-md-mark").range(ref.from, ref.to));
