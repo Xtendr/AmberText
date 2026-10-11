@@ -27,6 +27,10 @@
   <a href="#how-it-works">How it works</a>
 </p>
 
+<p align="center">
+  <a href="https://www.buymeacoffee.com/xtendr"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="40"></a>
+</p>
+
 <br>
 
 ![AmberText on Mac: a team onboarding guide with a callout and a timeline diagram, and a board update with a metrics table and pie chart in dark mode](docs/readme/hero.webp)
