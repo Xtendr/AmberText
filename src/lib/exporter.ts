@@ -1,6 +1,8 @@
 import proseCss from "../styles/prose.css?raw";
 import { escapeHtml, renderMarkdown } from "./markdown";
 import { renderMermaid } from "./mermaid";
+import { fsApi } from "./platform";
+import { extname, isExternalUrl, resolvePath } from "./paths";
 import { getState } from "../state/store";
 
 const EXPORT_FONTS = {
@@ -43,8 +45,36 @@ export async function renderForOutput(content: string, opts: { forExport: boolea
   return tpl.innerHTML;
 }
 
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  avif: "image/avif",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
+};
+
+/** Builds local images into the HTML itself, so the exported file works wherever it's sent. */
+async function embedImages(html: string, baseDir: string | null): Promise<string> {
+  if (!baseDir || !html.includes("<img")) return html;
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  for (const img of tpl.content.querySelectorAll("img")) {
+    const src = img.getAttribute("src");
+    if (!src || isExternalUrl(src) || src.startsWith("data:")) continue;
+    const path = resolvePath(baseDir, src);
+    const type = IMAGE_TYPES[extname(path)];
+    const data = type ? await fsApi.readBase64(path).catch(() => null) : null;
+    if (data) img.setAttribute("src", `data:${type};base64,${data}`);
+  }
+  return tpl.innerHTML;
+}
+
 export async function buildStandaloneHtml(content: string, title: string, baseDir: string | null): Promise<string> {
-  const body = await renderForOutput(content, { forExport: true, baseDir });
+  const body = await embedImages(await renderForOutput(content, { forExport: true, baseDir }), baseDir);
   const katex = body.includes('class="katex')
     ? `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">\n`
     : "";

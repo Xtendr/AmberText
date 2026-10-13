@@ -257,6 +257,12 @@ fn write_base64(path: String, data: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn read_base64(path: String) -> Result<String, String> {
+    let bytes = fs::read(&path).map_err(err)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
+#[tauri::command]
 fn copy_file(from: String, to: String) -> Result<(), String> {
     let p = PathBuf::from(&to);
     if let Some(dir) = p.parent() {
@@ -526,6 +532,7 @@ pub fn run() {
             rename_path,
             trash_path,
             write_base64,
+            read_base64,
             copy_file,
             reveal_path,
             take_launch_files,

@@ -145,6 +145,10 @@ export const fsApi = {
     if (!isTauri) return;
     return invoke("write_base64", { path, data });
   },
+  async readBase64(path: string): Promise<string | null> {
+    if (!isTauri) return null;
+    return invoke<string>("read_base64", { path });
+  },
   async copyFile(from: string, to: string): Promise<void> {
     if (!isTauri) return;
     return invoke("copy_file", { from, to });

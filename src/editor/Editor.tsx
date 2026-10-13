@@ -28,7 +28,7 @@ import { setImagePicker, slashCommands } from "./slash";
 import { countWords } from "../lib/text";
 import { fileSrc } from "../lib/platform";
 import { dirname, isExternalUrl, resolvePath } from "../lib/paths";
-import { followLink, insertImageFiles, pasteImage, pickImages, updateContent } from "../state/actions";
+import { ensureSavedForImages, followLink, insertImageFiles, pasteImage, pickImages, updateContent } from "../state/actions";
 import { aiFlashField, aiTargetField } from "./aiInline";
 import { htmlToMarkdown, isConvertibleHtml } from "../lib/htmlToMarkdown";
 import { smartEditing } from "./smartEdit";
@@ -216,7 +216,10 @@ setImageResolver((src) => {
 });
 
 setImagePicker((view, from) => {
-  void pickImages().then((paths) => {
+  // Save an untitled draft before choosing the image, so the image has a folder to be copied into.
+  void ensureSavedForImages().then(async (doc) => {
+    if (!doc) return;
+    const paths = await pickImages();
     if (paths.length) void insertImageFiles(view, paths, from);
   });
 });

@@ -18,6 +18,7 @@ import {
   basename,
   dirname,
   extname,
+  isAbsolute,
   isExternalUrl,
   isInside,
   join,
@@ -28,7 +29,7 @@ import {
   stripExt,
 } from "../lib/paths";
 import { extractHeadings, inferTitle } from "../lib/text";
-import { slugify } from "../lib/markdown";
+import { localImageSources, slugify } from "../lib/markdown";
 import { WELCOME_DOC, WELCOME_TITLE } from "../lib/samples";
 import {
   activeDoc,
@@ -479,14 +480,52 @@ export async function saveDocAs(id: string): Promise<boolean> {
     bridge.forget(other.id);
     setState((s) => ({ docs: s.docs.filter((d) => d.id !== other.id) }));
   }
+  const oldDir = doc.path ? dirname(doc.path) : null;
   moveGoal(goalKey(doc), path);
   patchDoc(id, { path, name: basename(path), mtime: 0, conflict: false });
   const ok = await saveDoc(id);
   if (ok) {
     addRecent(path);
+    if (oldDir && !samePath(oldDir, dirname(path))) await carryImages(doc.content, oldDir, dirname(path));
     void refreshTree();
   }
   return ok;
+}
+
+/**
+ * Images are linked, not embedded: "assets/photo.png" means "next to this file". When a document is
+ * saved into another folder, copy its images along so those links keep working there.
+ */
+async function carryImages(content: string, fromDir: string, toDir: string) {
+  let copied = 0;
+  const left: string[] = [];
+  for (const src of localImageSources(content)) {
+    const from = resolvePath(fromDir, src);
+    const to = resolvePath(toDir, src);
+    if (isAbsolute(decodeSafe(src)) || !(await fsApi.exists(from))) continue;
+    // Links that climb out of the folder ("../pics/a.png") would scatter files around the disk.
+    if (!isInside(to, toDir)) {
+      left.push(basename(from));
+      continue;
+    }
+    if (await fsApi.exists(to)) continue;
+    try {
+      await fsApi.copyFile(from, to);
+      copied++;
+    } catch {
+      left.push(basename(from));
+    }
+  }
+  if (left.length) toast(`Couldn't bring ${left.length === 1 ? `“${left[0]}”` : `${left.length} images`} along to the new folder`, "error");
+  else if (copied) toast(`Copied ${copied === 1 ? "1 image" : `${copied} images`} along to the new folder`, "success");
+}
+
+function decodeSafe(s: string): string {
+  try {
+    return decodeURI(s);
+  } catch {
+    return s;
+  }
 }
 
 export async function saveActive() {
@@ -650,11 +689,13 @@ export function followLink(href: string) {
   else void fsApi.reveal(target);
 }
 
-function requireSavedDoc(): Doc | null {
+/** Images live in a folder next to the document, so an unsaved draft is saved first (the Save dialog opens). */
+export async function ensureSavedForImages(): Promise<Doc | null> {
   const doc = activeDoc();
-  if (doc?.path) return doc;
-  toast("Save this document first so images have a home", "info", { label: "Save", run: () => void saveActive() });
-  return null;
+  if (!doc) return null;
+  if (doc.path) return doc;
+  if (!(await saveDocAs(doc.id))) return null;
+  return findDoc(doc.id) ?? null;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -673,7 +714,7 @@ function assetName(docPath: string, ext: string) {
 }
 
 export async function pasteImage(view: EditorView, files: File[]) {
-  const doc = requireSavedDoc();
+  const doc = await ensureSavedForImages();
   if (!doc?.path) return;
   const dir = join(dirname(doc.path), "assets");
   const parts: string[] = [];
@@ -695,13 +736,16 @@ export async function pasteImage(view: EditorView, files: File[]) {
 }
 
 export async function insertImageFiles(view: EditorView, paths: string[], pos?: number) {
-  const doc = requireSavedDoc();
+  const doc = await ensureSavedForImages();
   if (!doc?.path) return;
   const docDir = dirname(doc.path);
   const parts: string[] = [];
   for (const p of paths) {
     let target = p;
-    if (!isInside(p, docDir)) {
+    // Images already filed in a subfolder of the document's folder (assets/, images/…) are linked where
+    // they are. Anything else, including a loose file right beside the document, is copied into assets/.
+    const filed = isInside(p, docDir) && !samePath(dirname(p), docDir);
+    if (!filed) {
       target = join(docDir, "assets", basename(p));
       if (await fsApi.exists(target)) target = join(docDir, "assets", assetName(p, extname(p) || "png"));
       try {

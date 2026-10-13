@@ -119,7 +119,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "image-file",
     title: "Image from file…",
-    hint: "Copy into the assets folder",
+    hint: "Copied to an assets folder beside this file",
     keywords: "picture img photo upload attach",
     section: INSERT,
     icon: ImagePlus,

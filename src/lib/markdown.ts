@@ -203,3 +203,15 @@ export function renderMarkdown(src: string, env: RenderEnv = {}): string {
 export function renderFragment(src: string, env: RenderEnv = {}): string {
   return sanitize(md.render(src, env));
 }
+
+/** Image sources in a document that point at local files (relative or absolute paths), as written. */
+export function localImageSources(content: string): string[] {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = renderMarkdown(content, { forExport: true });
+  const out = new Set<string>();
+  for (const img of tpl.content.querySelectorAll("img")) {
+    const src = img.getAttribute("src");
+    if (src && !isExternalUrl(src) && !src.startsWith("data:")) out.add(src);
+  }
+  return [...out];
+}
