@@ -152,8 +152,8 @@ export function resolveDialog(action: string | null, value?: string) {
   r?.(action ? { action, value } : null);
 }
 
-export function openContextMenu(x: number, y: number, items: MenuItem[]) {
-  setState({ contextMenu: { x, y, items } });
+export function openContextMenu(x: number, y: number, items: MenuItem[], align: "start" | "end" = "start") {
+  setState({ contextMenu: { x, y, items, align } });
 }
 
 /* ------------------------------------------------------------------ */

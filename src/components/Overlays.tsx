@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CircleAlert, CircleCheck, FileDown, Info, X } from "lucide-react";
+import { Check, CircleAlert, CircleCheck, FileDown, Info, X } from "lucide-react";
 import { getState, setState, useStore, type MenuItem } from "../state/store";
 import { dismissToast, resolveDialog } from "../state/actions";
 
@@ -136,7 +136,7 @@ export function ContextMenuHost() {
     if (!menu || !ref.current) return setPos(null);
     const r = ref.current.getBoundingClientRect();
     const pad = 8;
-    let x = menu.x;
+    let x = menu.align === "end" ? menu.x - r.width : menu.x;
     let y = menu.y;
     if (x + r.width > window.innerWidth - pad) x = Math.max(pad, menu.x - r.width);
     if (y + r.height > window.innerHeight - pad) y = Math.max(pad, window.innerHeight - pad - r.height);
@@ -166,6 +166,7 @@ export function ContextMenuHost() {
 
   if (!menu) return null;
   const items = menu.items;
+  const checks = items.some((it) => it.checked !== undefined);
   const selectable = items.map((it, i) => (!it.separator && !it.disabled ? i : -1)).filter((i) => i >= 0);
 
   const run = (it: MenuItem) => {
@@ -195,7 +196,7 @@ export function ContextMenuHost() {
   return (
     <div
       ref={ref}
-      className="menu popover"
+      className={`menu popover${menu.align === "end" ? " from-end" : ""}`}
       role="menu"
       tabIndex={-1}
       style={{ left: pos?.x ?? menu.x, top: pos?.y ?? menu.y, visibility: pos ? "visible" : "hidden", outline: "none" }}
@@ -208,13 +209,15 @@ export function ContextMenuHost() {
         ) : (
           <button
             key={it.id ?? i}
-            role="menuitem"
+            role={it.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+            aria-checked={it.checked}
             className={`menu-item${it.danger ? " danger" : ""}${i === active ? " is-active" : ""}`}
             disabled={it.disabled}
             onMouseEnter={() => setActive(i)}
             onMouseLeave={() => setActive(-1)}
             onClick={() => run(it)}
           >
+            {checks && <span className="mi-icon">{it.checked && <Check size={14} strokeWidth={2.2} />}</span>}
             <span className="mi-label">{it.label}</span>
             {it.shortcut && <span className="mi-keys">{it.shortcut}</span>}
           </button>

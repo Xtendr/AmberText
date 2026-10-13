@@ -17,6 +17,8 @@ export interface Settings {
   lineHeight: number;
   measure: number;
   livePreview: boolean;
+  /** In Styled view, reveal the Markdown syntax of whatever the cursor is in ("Show Markdown while editing"). */
+  revealSyntax: boolean;
   focusMode: boolean;
   typewriter: boolean;
   spellcheck: boolean;
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lineHeight: 1.7,
   measure: 70,
   livePreview: true,
+  revealSyntax: false,
   focusMode: false,
   typewriter: false,
   spellcheck: true,
@@ -114,6 +117,8 @@ export interface MenuItem {
   danger?: boolean;
   disabled?: boolean;
   separator?: boolean;
+  /** Shows a checkmark column; true draws the mark. */
+  checked?: boolean;
   run?: () => void;
 }
 
@@ -121,6 +126,8 @@ export interface ContextMenuState {
   x: number;
   y: number;
   items: MenuItem[];
+  /** "end" right-aligns the menu to x, for buttons at the right edge of the window. */
+  align?: "start" | "end";
 }
 
 export type TreeEdit =

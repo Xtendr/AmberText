@@ -105,7 +105,7 @@ async function copyHtml() {
   }
 }
 
-function toggleSetting(key: "focusMode" | "typewriter" | "livePreview" | "spellcheck" | "autosave", label: string) {
+function toggleSetting(key: "focusMode" | "typewriter" | "livePreview" | "revealSyntax" | "spellcheck" | "autosave", label: string) {
   return () => {
     const s = getState();
     const next = !s.settings[key];
@@ -185,7 +185,8 @@ export const COMMANDS: Command[] = [
   { id: "typewriter", title: "Toggle typewriter scrolling", group: "View", keys: "Mod+Shift+T", run: toggleSetting("typewriter", "Typewriter scrolling") },
   { id: "zen", title: "Toggle zen mode", group: "View", keys: "Mod+Shift+Enter", keywords: "fullscreen distraction free", run: () => void toggleZen() },
   { id: "word-goal", title: "Set word goal…", group: "View", doc: true, keywords: "target count progress writing", run: () => void setWordGoal() },
-  { id: "live-preview", title: "Toggle live preview", group: "View", keys: "Mod+Shift+M", keywords: "source raw markdown", run: toggleSetting("livePreview", "Live preview") },
+  { id: "live-preview", title: "Switch between Styled and Markdown view", group: "View", keys: "Mod+Shift+M", keywords: "live preview source raw markdown styled", run: toggleSetting("livePreview", "Styled view") },
+  { id: "reveal-syntax", title: "Toggle Show Markdown while editing", group: "View", keywords: "reveal syntax symbols styled live preview", run: toggleSetting("revealSyntax", "Show Markdown while editing") },
   { id: "palette", title: "Command palette", group: "View", keys: "Mod+K", hidden: true, run: () => setState((s) => ({ palette: s.palette ? null : "commands" })) },
   { id: "palette-legacy", title: "Command palette", group: "View", keys: "Mod+Shift+P", hidden: true, run: () => setState({ palette: "commands" }) },
   { id: "goto-heading", title: "Go to heading…", group: "View", keys: "Mod+G", doc: true, keywords: "outline section jump", run: () => setState({ palette: "headings" }) },

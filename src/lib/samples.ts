@@ -4,7 +4,7 @@ export const WELCOME_DOC = `# Welcome to AmberText
 
 AmberText is a quiet place to write. What you see is *styled*, but underneath it is always **plain Markdown** — portable, future‑proof, and yours.
 
-Move your cursor into any styled text and its syntax gently reappears. Move away and it gets out of your way again.
+You edit the styled text directly. Want to see the Markdown symbols while you type? Open the **Styled** menu in the title bar and turn on *Show Markdown while editing*.
 
 ## The essentials
 

@@ -211,7 +211,8 @@ function EditorSection() {
     <>
       <div className="set-group">
         <h3>Editing</h3>
-        <ToggleRow k="livePreview" label="Live preview" desc="Hide Markdown syntax and render formatting inline as you write." />
+        <ToggleRow k="livePreview" label="Styled view" desc="Hide Markdown syntax and render formatting inline as you write. Turn off to see plain Markdown." />
+        <ToggleRow k="revealSyntax" label="Show Markdown while editing" desc="In Styled view, reveal the Markdown symbols of the line you're editing." />
         <ToggleRow k="spellcheck" label="Check spelling" desc="Underline misspelled words using the system dictionary." />
       </div>
       <div className="set-group">

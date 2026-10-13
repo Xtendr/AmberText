@@ -210,6 +210,44 @@ function ViewSwitch() {
   );
 }
 
+/** Styled vs plain Markdown (same text either way), plus "Show Markdown while editing" for Styled. */
+function SyntaxMenuButton() {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const live = useStore((s) => s.settings.livePreview);
+  const visible = useStore((s) => !!s.activeId && s.settings.viewMode !== "read");
+  if (!visible) return null;
+  const show = () => {
+    const { livePreview, revealSyntax } = getState().settings;
+    const set = getState().setSettings;
+    const r = ref.current!.getBoundingClientRect();
+    setOpen(true);
+    openContextMenu(
+      r.right,
+      r.bottom + 6,
+      [
+        { label: "Styled", checked: livePreview, run: () => set({ livePreview: true }) },
+        { label: "Markdown", checked: !livePreview, shortcut: keysFor("live-preview"), run: () => set({ livePreview: false }) },
+        { separator: true },
+        { label: "Show Markdown while editing", checked: revealSyntax, disabled: !livePreview, run: () => set({ revealSyntax: !revealSyntax }) },
+      ],
+      "end",
+    );
+    const unsub = useStore.subscribe((s) => {
+      if (!s.contextMenu) {
+        setOpen(false);
+        unsub();
+      }
+    });
+  };
+  return (
+    <button ref={ref} className="view-menu-btn fade-on-type" onClick={show} aria-expanded={open} aria-haspopup="menu" data-tip="Editor view">
+      {live ? "Styled" : "Markdown"}
+      <ChevronDown size={13} className="chev" />
+    </button>
+  );
+}
+
 function WindowControls() {
   const maximized = useStore((s) => s.maximized);
   const fluent = navigator.userAgent.includes("Windows");
@@ -249,6 +287,7 @@ export function TitleBar() {
       <Tabs />
       <div className="tb-drag" data-tauri-drag-region />
       <div className="tb-right" data-tauri-drag-region>
+        <SyntaxMenuButton />
         <ViewSwitch />
         <button
           className="icon-btn fade-on-type"

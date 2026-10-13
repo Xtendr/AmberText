@@ -1,6 +1,6 @@
 import { syntaxTree } from "@codemirror/language";
-import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Extension, type Range } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
+import { EditorSelection, Facet, Prec, RangeSetBuilder, StateEffect, StateField, findClusterBreak, type EditorState, type Extension, type Range } from "@codemirror/state";
+import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import katex from "katex";
 import { escapeHtml, renderFragment, splitFrontmatter } from "../lib/markdown";
@@ -21,6 +21,8 @@ export function setImageResolver(fn: (src: string) => string) {
 export const refreshBlocks = StateEffect.define<null>();
 
 const hide = Decoration.replace({});
+/** Hides a block marker at the start of a line: heading hashes, quote marks, task brackets. */
+const hidePrefix = Decoration.replace({});
 const markCache = new Map<string, Decoration>();
 const lineCache = new Map<string, Decoration>();
 const mark = (cls: string) => {
@@ -34,6 +36,13 @@ const lineDeco = (cls: string) => {
   return d;
 };
 
+/**
+ * "Show Markdown while editing": when true, the syntax of whatever the cursor touches is revealed.
+ * When false, Styled view stays styled and only blocks that can't be edited any other way
+ * (tables, math, diagrams, images, links, code fences) still show their source.
+ */
+const revealFacet = Facet.define<boolean, boolean>({ combine: (v) => v[0] ?? true });
+
 /** Syntax is only revealed around the cursor while the editor is focused. */
 const setFocused = StateEffect.define<boolean>();
 const focusedField = StateField.define<boolean>({
@@ -45,14 +54,16 @@ const focusedField = StateField.define<boolean>({
 });
 export const syncFocus = (view: EditorView) => setFocused.of(view.hasFocus);
 
-function touches(state: EditorState, from: number, to: number): boolean {
+/** `always` reveals regardless of the "Show Markdown while editing" setting. */
+function touches(state: EditorState, from: number, to: number, always = false): boolean {
+  if (!always && !state.facet(revealFacet)) return false;
   if (state.field(focusedField, false) === false) return false;
   for (const r of state.selection.ranges) if (r.from <= to && r.to >= from) return true;
   return false;
 }
 
-function linesTouch(state: EditorState, from: number, to: number): boolean {
-  return touches(state, state.doc.lineAt(from).from, state.doc.lineAt(to).to);
+function linesTouch(state: EditorState, from: number, to: number, always = false): boolean {
+  return touches(state, state.doc.lineAt(from).from, state.doc.lineAt(to).to, always);
 }
 
 /** End offset of a leading YAML front-matter block, or -1. */
@@ -296,7 +307,7 @@ function buildInline(view: EditorView): DecorationSet {
   const blocks = state.field(blockField, false)?.ranges ?? [];
   const replacedBlock = (from: number) => {
     const b = blocks.find((r) => r.from === from);
-    return !!b && !linesTouch(state, b.from, b.to);
+    return !!b && !linesTouch(state, b.from, b.to, true);
   };
 
   if (fmEnd > 0 && !replacedBlock(0)) {
@@ -317,7 +328,7 @@ function buildInline(view: EditorView): DecorationSet {
       const from = para.from + m.index + m[1].length;
       const to = from + m[0].length - m[1].length;
       if (code.some(([a, b]) => a < to && b > from)) continue;
-      if (touches(state, from, to)) acc.push(mark("cm-math-inline-src").range(from, to));
+      if (touches(state, from, to, true)) acc.push(mark("cm-math-inline-src").range(from, to));
       else acc.push(Decoration.replace({ widget: new InlineMathWidget(m[2]) }).range(from, to));
     }
   };
@@ -349,10 +360,11 @@ function buildInline(view: EditorView): DecorationSet {
             }
             let start = m.from;
             let end = m.to;
-            if (m.from === line.from || doc.sliceString(line.from, m.from).trim() === "") {
+            const leading = m.from === line.from || doc.sliceString(line.from, m.from).trim() === "";
+            if (leading) {
               if (doc.sliceString(end, end + 1) === " ") end++;
             } else if (doc.sliceString(start - 1, start) === " ") start--;
-            if (end > start) out.push(hide.range(start, end));
+            if (end > start) out.push((leading ? hidePrefix : hide).range(start, end));
           }
           return;
         }
@@ -383,7 +395,7 @@ function buildInline(view: EditorView): DecorationSet {
             const image = node.getChild("Image");
             if (image && image.from === ref.from + 1) {
               // Linked image, e.g. a README badge: show the image, keep the link source hidden.
-              const active = touches(state, ref.from, ref.to);
+              const active = touches(state, ref.from, ref.to, true);
               out.push((active ? mark("cm-md-mark") : hide).range(ref.from, image.from));
               out.push((active ? mark("cm-md-mark cm-link-dest") : hide).range(image.to, ref.to));
               linkedImages.add(image.from);
@@ -391,16 +403,17 @@ function buildInline(view: EditorView): DecorationSet {
             }
             if (doc.sliceString(ref.from, ref.from + 2) === "[!") return false;
             const marks = children(node, "LinkMark");
-            const active = touches(state, ref.from, ref.to);
+            const active = touches(state, ref.from, ref.to, true);
+            const bracketsActive = touches(state, ref.from, ref.to);
             if (name === "Autolink") {
               const url = node.getChild("URL");
               if (url) out.push(mark("cm-link").range(url.from, url.to));
-              if (!active) for (const m of marks) out.push(hide.range(m.from, m.to));
+              if (!bracketsActive) for (const m of marks) out.push(hide.range(m.from, m.to));
               return false;
             }
             if (doc.sliceString(ref.from, ref.from + 2) === "[^" && !node.getChild("URL")) {
               out.push(mark("cm-footnote-ref").range(ref.from, ref.to));
-              if (!active && marks.length >= 2) {
+              if (!bracketsActive && marks.length >= 2) {
                 out.push(hide.range(ref.from, ref.from + 2));
                 out.push(hide.range(marks[marks.length - 1].from, marks[marks.length - 1].to));
               }
@@ -419,7 +432,7 @@ function buildInline(view: EditorView): DecorationSet {
             return;
           }
           case "Image": {
-            const active = touches(state, ref.from, ref.to);
+            const active = touches(state, ref.from, ref.to, true);
             const url = node.getChild("URL");
             const marks = children(node, "LinkMark");
             const sameLine = doc.lineAt(ref.from).number === doc.lineAt(ref.to).number;
@@ -458,7 +471,7 @@ function buildInline(view: EditorView): DecorationSet {
                 if (rest) {
                   let e = end;
                   if (doc.sliceString(e, e + 1) === " ") e++;
-                  out.push(hide.range(start, e));
+                  out.push(hidePrefix.range(start, e));
                   out.push(mark("cm-callout-title").range(e, firstLine.to));
                 } else {
                   out.push(Decoration.replace({ widget: new CalloutLabelWidget(kind) }).range(start, end));
@@ -474,7 +487,7 @@ function buildInline(view: EditorView): DecorationSet {
             if (!touches(state, line.from, line.to)) {
               let end = ref.to;
               if (doc.sliceString(end, end + 1) === " ") end++;
-              out.push(hide.range(ref.from, end));
+              out.push(hidePrefix.range(ref.from, end));
             } else out.push(mark("cm-md-mark").range(ref.from, ref.to));
             return;
           }
@@ -495,7 +508,7 @@ function buildInline(view: EditorView): DecorationSet {
               const end = spaceAfter(task.to);
               const checked = /x/i.test(doc.sliceString(task.from, task.to));
               if (!touches(state, start, end)) {
-                out.push(hide.range(start, task.from));
+                out.push(hidePrefix.range(start, task.from));
                 out.push(Decoration.replace({ widget: new CheckboxWidget(checked, taskLabel(doc.sliceString(end, line.to))) }).range(task.from, end));
                 hanging(1.42);
               } else {
@@ -536,7 +549,7 @@ function buildInline(view: EditorView): DecorationSet {
             const lang = info ? doc.sliceString(info.from, info.to).trim().toLowerCase() : "";
             if (lang === "mermaid" && replacedBlock(ref.from)) return false;
             // Outside the block the fences collapse to a quiet language label.
-            const quiet = !linesTouch(state, ref.from, ref.to) ? " cm-code-quiet" : "";
+            const quiet = !linesTouch(state, ref.from, ref.to, true) ? " cm-code-quiet" : "";
             eachLine(ref.from, ref.to, (lf, n, first, last) => {
               let cls = "cm-code";
               if (n === first) cls += " cm-code-first cm-code-fence" + quiet;
@@ -602,7 +615,7 @@ function buildInline(view: EditorView): DecorationSet {
             out.push(mark("cm-html").range(ref.from, ref.to));
             return false;
           case "Escape":
-            out.push(mark("cm-md-mark").range(ref.from, ref.from + 1));
+            out.push((state.facet(revealFacet) ? mark("cm-md-mark") : hide).range(ref.from, ref.from + 1));
             return;
           case "LinkReference":
             out.push(mark("cm-link-ref").range(ref.from, ref.to));
@@ -615,11 +628,25 @@ function buildInline(view: EditorView): DecorationSet {
   return Decoration.set(out, true);
 }
 
+interface Span {
+  from: number;
+  to: number;
+}
+
+const PREFIX_WIDGETS = [BulletWidget, NumberWidget, CheckboxWidget, RuleWidget, CalloutLabelWidget];
+const isPrefix = (d: Decoration) => d === hidePrefix || PREFIX_WIDGETS.some((W) => d.spec.widget instanceof W);
+
 const inlinePlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    /** Everything replaced by nothing or by a widget; the cursor skips over these as a whole. */
+    atomic: DecorationSet = Decoration.none;
+    /** Hidden block markers at the start of a line (heading hashes, quote marks, list bullets). */
+    prefixes: Span[] = [];
+    /** Hidden inline markers (emphasis stars, code backticks, HTML tags). */
+    marks: Span[] = [];
     constructor(view: EditorView) {
-      this.decorations = buildInline(view);
+      this.decorations = this.build(view);
     }
     update(u: ViewUpdate) {
       if (
@@ -629,12 +656,221 @@ const inlinePlugin = ViewPlugin.fromClass(
         syntaxTree(u.state) !== syntaxTree(u.startState) ||
         u.transactions.some((t) => t.effects.some((e) => e.is(refreshBlocks) || e.is(setFocused)))
       ) {
-        this.decorations = buildInline(u.view);
+        this.decorations = this.build(u.view);
       }
+    }
+    build(view: EditorView): DecorationSet {
+      const set = buildInline(view);
+      const atomic: Range<Decoration>[] = [];
+      this.prefixes = [];
+      this.marks = [];
+      if (!view.state.facet(revealFacet)) {
+        for (const it = set.iter(); it.value; it.next()) {
+          const d = it.value;
+          if (d !== hide && !isPrefix(d) && !d.spec.widget) continue;
+          atomic.push(d.range(it.from, it.to));
+          if (isPrefix(d)) this.prefixes.push({ from: it.from, to: it.to });
+          else if (d === hide) this.marks.push({ from: it.from, to: it.to });
+        }
+      }
+      this.atomic = Decoration.set(atomic);
+      return set;
     }
   },
   { decorations: (v) => v.decorations },
 );
+
+/* ------------------------------------------------------------------ */
+/* Pure Styled editing ("Show Markdown while editing" off)             */
+/* ------------------------------------------------------------------ */
+
+/** End of the hidden block markers at the start of `line` and the innermost one, if any. */
+function linePrefix(view: EditorView, lineFrom: number, lineTo: number): { end: number; last: Span | null } {
+  const spans = view.plugin(inlinePlugin)?.prefixes ?? [];
+  let end = lineFrom;
+  let last: Span | null = null;
+  for (const r of spans) {
+    if (r.from > lineTo) break;
+    if (r.from === end && r.to > end) {
+      end = r.to;
+      last = r;
+    }
+  }
+  return { end, last };
+}
+
+function hiddenMarks(view: EditorView): Span[] {
+  return view.plugin(inlinePlugin)?.marks ?? [];
+}
+
+/** Steps over hidden inline markers touching `pos` in direction `dir`. */
+function skipMarks(marks: Span[], pos: number, dir: -1 | 1): number {
+  for (let moved = true; moved; ) {
+    moved = false;
+    for (const r of marks) {
+      if (dir < 0 ? r.to === pos && r.from < pos : r.from === pos && r.to > pos) {
+        pos = dir < 0 ? r.from : r.to;
+        moved = true;
+      }
+    }
+  }
+  return pos;
+}
+
+function isHiddenEscape(view: EditorView, marks: Span[], at: number): boolean {
+  return view.state.doc.sliceString(at, at + 1) === "\\" && marks.some((r) => r.from === at && r.to === at + 1);
+}
+
+function singleCursor(view: EditorView): number | null {
+  const { ranges } = view.state.selection;
+  return ranges.length === 1 && ranges[0].empty ? ranges[0].head : null;
+}
+
+function remove(view: EditorView, from: number, to: number, cursor: number, userEvent: string) {
+  view.dispatch({ changes: { from, to }, selection: { anchor: cursor }, scrollIntoView: true, userEvent });
+  return true;
+}
+
+/**
+ * Backspace never eats an invisible character: at the start of a heading, quote or list item it
+ * removes that block marker (the line becomes plain text), and after hidden emphasis markers it
+ * deletes the last visible letter instead.
+ */
+function styledBackspace(view: EditorView): boolean {
+  const pos = singleCursor(view);
+  if (pos == null) return false;
+  const { doc } = view.state;
+  const line = doc.lineAt(pos);
+  const prefix = linePrefix(view, line.from, line.to);
+  if (prefix.last && pos === prefix.end) {
+    // Plain bullets and numbers are left to the Markdown keymap, which outdents them sensibly.
+    if (/^\s*([-*+]|\d+[.)])\s?$/.test(doc.sliceString(prefix.last.from, prefix.last.to))) return false;
+    return remove(view, prefix.last.from, prefix.last.to, prefix.last.from, "delete.backward");
+  }
+  const marks = hiddenMarks(view);
+  const q = skipMarks(marks, pos, -1);
+  if (q === pos) {
+    // An escaped character (\*) goes together with its hidden backslash.
+    const cf = line.from + findClusterBreak(line.text, pos - line.from, false);
+    if (cf > line.from && isHiddenEscape(view, marks, cf - 1)) return remove(view, cf - 1, pos, cf - 1, "delete.backward");
+    return false;
+  }
+  if (q <= prefix.end) return false;
+  const charFrom = line.from + findClusterBreak(line.text, q - line.from, false);
+  // Deleting the only letter inside **x** removes the empty markers too.
+  const open = skipMarks(marks, charFrom, -1);
+  if (open < charFrom) return remove(view, open, pos, open, "delete.backward");
+  return remove(view, charFrom, q, charFrom, "delete.backward");
+}
+
+/** Forward Delete: mirrors Backspace, and joining with a following heading drops its hidden marker. */
+function styledDelete(view: EditorView): boolean {
+  const pos = singleCursor(view);
+  if (pos == null) return false;
+  const { doc } = view.state;
+  const line = doc.lineAt(pos);
+  const marks = hiddenMarks(view);
+  const q = skipMarks(marks, pos, 1);
+  if (q === line.to) {
+    if (line.number === doc.lines) return false;
+    const next = doc.line(line.number + 1);
+    const prefix = linePrefix(view, next.from, next.to);
+    if (prefix.end > next.from) return remove(view, q, prefix.end, q, "delete.forward");
+    return q === pos ? false : remove(view, q, q + 1, q, "delete.forward");
+  }
+  if (q === pos) {
+    if (pos === line.from || !isHiddenEscape(view, marks, pos - 1)) return false;
+    return remove(view, pos - 1, line.from + findClusterBreak(line.text, pos - line.from, true), pos - 1, "delete.forward");
+  }
+  const charTo = line.from + findClusterBreak(line.text, q - line.from, true);
+  const close = skipMarks(marks, charTo, 1);
+  if (close > charTo || doc.sliceString(pos, q) === "\\") return remove(view, pos, Math.max(close, charTo), pos, "delete.forward");
+  return remove(view, q, charTo, pos, "delete.forward");
+}
+
+/** Enter at the very start of a heading pushes the heading down instead of splitting off its marker. */
+function styledEnter(view: EditorView): boolean {
+  const pos = singleCursor(view);
+  if (pos == null) return false;
+  const line = view.state.doc.lineAt(pos);
+  if (!/^#{1,6}\s/.test(line.text)) return false;
+  const prefix = linePrefix(view, line.from, line.to);
+  if (pos !== prefix.end || pos === line.from || pos === line.to) return false;
+  view.dispatch({ changes: { from: line.from, insert: "\n" }, selection: { anchor: pos + 1 }, scrollIntoView: true, userEvent: "input" });
+  return true;
+}
+
+/**
+ * Keeps the cursor out of hidden block markers: clicking at the start of a heading or pressing Home
+ * lands after the invisible "## ", and Left from there continues to the previous line.
+ */
+const keepCursorInText = ViewPlugin.fromClass(
+  class {
+    update(u: ViewUpdate) {
+      if (!u.selectionSet && !u.docChanged) return;
+      const view = u.view;
+      const sel = u.state.selection;
+      if (sel.ranges.length !== 1 || view.composing) return;
+      const byKey = u.transactions.some((t) => t.isUserEvent("select") && !t.isUserEvent("select.pointer"));
+      const movedLeft = byKey && !u.docChanged && sel.main.head < u.startState.selection.main.head;
+      const byPointer = u.transactions.some((t) => t.isUserEvent("select.pointer"));
+      // Wait until this update has finished so the hidden-marker positions are current.
+      queueMicrotask(() => {
+        if (view.state.selection !== sel) return;
+        const { anchor, head } = sel.main;
+        const { doc } = view.state;
+        const headLine = doc.lineAt(head);
+        const headPrefix = linePrefix(view, headLine.from, headLine.to);
+        // Left (or Shift+Left) from the first letter continues to the previous line.
+        if (movedLeft && head < headPrefix.end && u.startState.selection.main.head === headPrefix.end && headLine.from > 0) {
+          view.dispatch({ selection: EditorSelection.single(anchor === head ? headLine.from - 1 : anchor, headLine.from - 1) });
+          return;
+        }
+        const from = Math.min(anchor, head);
+        const to = Math.max(anchor, head);
+        const fromLine = doc.lineAt(from);
+        const toLine = doc.lineAt(to);
+        const fromPrefix = linePrefix(view, fromLine.from, fromLine.to);
+        const toPrefix = toLine.number === fromLine.number ? fromPrefix : linePrefix(view, toLine.from, toLine.to);
+        let nextFrom = Math.max(from, fromPrefix.end);
+        let nextTo = to;
+        // A selection that ends inside the next line's hidden marker (a triple-click selects the line
+        // break too) stops at the end of the line before, so typing over it keeps both blocks intact.
+        if (toLine.number !== fromLine.number && to < toPrefix.end) nextTo = toLine.from - 1;
+        else if (to < toPrefix.end) nextTo = toPrefix.end;
+        // Same for a triple-clicked line: leave its line break out so typing doesn't merge the next block.
+        else if (byPointer && to === toLine.from && toLine.number === fromLine.number + 1) nextTo = toLine.from - 1;
+        nextTo = Math.max(nextTo, nextFrom);
+        if (nextFrom === from && nextTo === to) return;
+        const forward = anchor <= head;
+        view.dispatch({ selection: forward ? EditorSelection.single(nextFrom, nextTo) : EditorSelection.single(nextTo, nextFrom) });
+      });
+    }
+  },
+);
+
+const HR_LINE = /^ {0,3}([-*_])( *\1){2,} *$/;
+
+const typeAfterRule = EditorView.inputHandler.of((view, from, to, text) => {
+  if (from !== to || view.state.selection.ranges.length !== 1) return false;
+  const line = view.state.doc.lineAt(from);
+  if (from !== line.to || !HR_LINE.test(line.text) || linePrefix(view, line.from, line.to).end !== line.to) return false;
+  view.dispatch({ changes: { from, insert: "\n" + text }, selection: { anchor: from + 1 + text.length }, scrollIntoView: true, userEvent: "input.type" });
+  return true;
+});
+
+function styledEditing(): Extension {
+  return [
+    typeAfterRule,
+    EditorView.atomicRanges.of((view) => view.plugin(inlinePlugin)?.atomic ?? Decoration.none),
+    keepCursorInText,
+    Prec.highest(keymap.of([
+      { key: "Backspace", run: styledBackspace },
+      { key: "Delete", run: styledDelete },
+      { key: "Enter", run: styledEnter },
+    ])),
+  ];
+}
 
 /* ------------------------------------------------------------------ */
 /* Block widgets: tables, display math, Mermaid diagrams               */
@@ -823,7 +1059,7 @@ function decorateBlocks(state: EditorState, ranges: BlockRange[]): DecorationSet
   for (const r of ranges) {
     const from = state.doc.lineAt(r.from).from;
     const to = state.doc.lineAt(r.to).to;
-    if (touches(state, from, to)) continue;
+    if (touches(state, from, to, true)) continue;
     const lines = state.doc.lineAt(to).number - state.doc.lineAt(from).number + 1;
     const widget =
       r.kind === "table"
@@ -866,8 +1102,10 @@ const blockField = StateField.define<BlockFieldValue>({
 
 /* ------------------------------------------------------------------ */
 
-export function livePreview(): Extension {
+export function livePreview(revealSyntax = true): Extension {
   return [
+    revealFacet.of(revealSyntax),
+    revealSyntax ? [] : styledEditing(),
     focusedField,
     EditorView.focusChangeEffect.of((_state, focusing) => setFocused.of(focusing)),
     blockField,

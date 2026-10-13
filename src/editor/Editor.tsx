@@ -43,7 +43,7 @@ const spell = new Compartment();
 
 function settingsExt(s: Settings) {
   return {
-    live: s.livePreview ? livePreview() : sourceMode(),
+    live: s.livePreview ? livePreview(s.revealSyntax) : sourceMode(),
     focus: s.focusMode ? focusMode() : [],
     writer: s.typewriter ? typewriter() : [],
     spell: EditorView.contentAttributes.of({
@@ -225,6 +225,7 @@ export function Editor() {
   const host = useRef<HTMLDivElement>(null);
   const activeId = useStore((s) => s.activeId);
   const livePref = useStore((s) => s.settings.livePreview);
+  const revealPref = useStore((s) => s.settings.revealSyntax);
   const focusPref = useStore((s) => s.settings.focusMode);
   const writerPref = useStore((s) => s.settings.typewriter);
   const spellPref = useStore((s) => s.settings.spellcheck);
@@ -270,7 +271,7 @@ export function Editor() {
 
   useEffect(() => {
     if (bridge.view && bridge.viewDocId) reconfigure(bridge.view);
-  }, [livePref, focusPref, writerPref, spellPref]);
+  }, [livePref, revealPref, focusPref, writerPref, spellPref]);
 
   useEffect(() => {
     bridge.view?.dispatch({ effects: refreshBlocks.of(null) });

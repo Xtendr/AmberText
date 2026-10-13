@@ -43,8 +43,8 @@ Open a folder  →  Write in styled text  →  It saves as plain Markdown  →  
 
 ### Styled while you write, plain text underneath
 
-What you see is styled: headings, bold, links, tables, checkboxes. Move your cursor into any of it and the Markdown
-syntax gently reappears; move away and it gets out of your way again. There is no import or export step. The file on
+What you see is styled: headings, bold, links, tables, checkboxes, and you edit them as they look. Prefer to see the
+Markdown symbols of the line you're editing? Turn on *Show Markdown while editing* in the Styled menu in the title bar. There is no import or export step. The file on
 disk is ordinary Markdown that works in GitHub, Obsidian, VS Code or any text editor, today and in twenty years.
 
 ### Press `/` for anything
