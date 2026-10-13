@@ -21,6 +21,13 @@
 </p>
 
 <p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Xtendr/AmberText?style=flat-square&color=F0A830" alt="License: GPL-3.0"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-F0A830?style=flat-square" alt="Platforms: macOS and Windows">
+  <a href="https://tauri.app"><img src="https://img.shields.io/badge/built%20with-Tauri%202-F0A830?style=flat-square&logo=tauri&logoColor=white" alt="Built with Tauri 2"></a>
+  <a href="https://github.com/Xtendr/AmberText/commits/main"><img src="https://img.shields.io/github/last-commit/Xtendr/AmberText?style=flat-square&color=F0A830" alt="Last commit"></a>
+</p>
+
+<p align="center">
   <a href="https://ambertext-landing-page.vercel.app/"><b>Landing page</b></a> &nbsp;·&nbsp;
   <a href="#features">Features</a> &nbsp;·&nbsp;
   <a href="#build-it-yourself">Build it yourself</a> &nbsp;·&nbsp;
