@@ -91,14 +91,14 @@ function pad(s: string, w: number, align: Align) {
   return s + " ".repeat(gap);
 }
 
-interface Table {
+export interface Table {
   rows: string[][];
   delimiter: number;
   aligns: Align[];
   cols: number;
 }
 
-function parseTable(lines: string[]): Table | null {
+export function parseTable(lines: string[]): Table | null {
   const rows = lines.map(splitRow);
   const delimiter = rows.findIndex(isDelimiter);
   if (delimiter !== 1) return null;
@@ -107,7 +107,7 @@ function parseTable(lines: string[]): Table | null {
   return { rows, delimiter, aligns: rows[delimiter].map(alignOf), cols };
 }
 
-function formatTable(t: Table): string[] {
+export function formatTable(t: Table): string[] {
   const widths = Array.from({ length: t.cols }, (_, c) => Math.max(3, ...t.rows.map((r, i) => (i === t.delimiter ? 0 : width(r[c])))));
   return t.rows.map((r, i) => {
     if (i === t.delimiter) {

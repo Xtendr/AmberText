@@ -1,5 +1,5 @@
 import { syntaxTree } from "@codemirror/language";
-import { EditorSelection, Facet, Prec, RangeSetBuilder, StateEffect, StateField, findClusterBreak, type EditorState, type Extension, type Range } from "@codemirror/state";
+import { EditorSelection, Facet, Prec, RangeSetBuilder, StateEffect, StateField, findClusterBreak, type EditorState, type Extension, type Line, type Range } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import katex from "katex";
@@ -7,6 +7,7 @@ import { escapeHtml, renderFragment, splitFrontmatter } from "../lib/markdown";
 import { plainInline } from "../lib/text";
 import { cachedMermaid, renderMermaid } from "../lib/mermaid";
 import { toggleTaskAt } from "./commands";
+import { enterTable, isEditingTable, makeTableEditable, renderTable } from "./tableEdit";
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                      */
@@ -625,6 +626,13 @@ function buildInline(view: EditorView): DecorationSet {
       },
     });
   }
+  // The empty line Markdown needs under a table collapses, so the next paragraph sits right below it.
+  if (!state.facet(revealFacet)) {
+    for (const t of tableSpans(state)) {
+      const gap = tableGapAfter(state, t);
+      if (gap) out.push(lineDeco("cm-table-gap").range(gap.from));
+    }
+  }
   return Decoration.set(out, true);
 }
 
@@ -731,6 +739,39 @@ function remove(view: EditorView, from: number, to: number, cursor: number, user
   return true;
 }
 
+/** Start and end (line-aligned) of every table in the document. */
+function tableSpans(state: EditorState): Span[] {
+  const ranges = state.field(blockField, false)?.ranges ?? [];
+  return ranges.filter((r) => r.kind === "table").map((r) => ({ from: state.doc.lineAt(r.from).from, to: state.doc.lineAt(r.to).to }));
+}
+
+/**
+ * The single empty line between a table and the text after it. It can't be removed (the text would
+ * become a table row), so in pure Styled view it's collapsed and the cursor never rests on it.
+ */
+function tableGapAfter(state: EditorState, t: Span): Line | null {
+  const doc = state.doc;
+  if (t.to + 1 > doc.length) return null;
+  const gap = doc.lineAt(t.to + 1);
+  if (gap.length !== 0 || gap.number >= doc.lines) return null;
+  return doc.line(gap.number + 1).length > 0 ? gap : null;
+}
+
+/** Arrow Down/Up from the text into a table goes to its first/last row instead of jumping past it. */
+function arrowIntoTable(dir: -1 | 1) {
+  return (view: EditorView): boolean => {
+    const pos = singleCursor(view);
+    if (pos == null) return false;
+    const target = view.moveVertically(view.state.selection.main, dir > 0).head;
+    const table = tableSpans(view.state).find((t) => {
+      if (dir > 0) return t.from > pos && target >= t.from;
+      const reach = tableGapAfter(view.state, t)?.to ?? t.to;
+      return reach < pos && target <= reach;
+    });
+    return !!table && enterTable(view, table.from, dir);
+  };
+}
+
 /**
  * Backspace never eats an invisible character: at the start of a heading, quote or list item it
  * removes that block marker (the line becomes plain text), and after hidden emphasis markers it
@@ -741,6 +782,19 @@ function styledBackspace(view: EditorView): boolean {
   if (pos == null) return false;
   const { doc } = view.state;
   const line = doc.lineAt(pos);
+  // Never eat a table's last character, or pull the paragraph below a table up into it (a line of text
+  // right under a table becomes one of its rows).
+  const above = line.number > 2 ? doc.line(line.number - 1) : null;
+  const pullsIntoTable = pos === line.from && line.length > 0 && above?.length === 0;
+  // Removing the only empty line between a table and the text below it would do the same, so Backspace
+  // there steps up into the table's last cell instead.
+  const lastGap = pos === line.from && line.length === 0 && line.number < doc.lines && doc.line(line.number + 1).length > 0;
+  for (const t of tableSpans(view.state)) {
+    if (pos === t.to) return true;
+    // Backspace at the start of the paragraph under a table continues at the end of the table's last cell.
+    if (pullsIntoTable && above!.from - 1 === t.to) return enterTable(view, t.from, -1, true) || true;
+    if (lastGap && pos - 1 === t.to) return enterTable(view, t.from, -1, true) || true;
+  }
   const prefix = linePrefix(view, line.from, line.to);
   if (prefix.last && pos === prefix.end) {
     // Plain bullets and numbers are left to the Markdown keymap, which outdents them sensibly.
@@ -769,6 +823,9 @@ function styledDelete(view: EditorView): boolean {
   if (pos == null) return false;
   const { doc } = view.state;
   const line = doc.lineAt(pos);
+  const below = line.number < doc.lines - 1 ? doc.line(line.number + 1) : null;
+  const pullsIntoTable = pos === line.to && line.length > 0 && below?.length === 0;
+  if (tableSpans(view.state).some((t) => pos === t.from || (pullsIntoTable && below!.to + 1 === t.from))) return true;
   const marks = hiddenMarks(view);
   const q = skipMarks(marks, pos, 1);
   if (q === line.to) {
@@ -819,6 +876,15 @@ const keepCursorInText = ViewPlugin.fromClass(
         if (view.state.selection !== sel) return;
         const { anchor, head } = sel.main;
         const { doc } = view.state;
+        if (anchor === head) {
+          const gap = tableSpans(view.state)
+            .map((t) => tableGapAfter(view.state, t))
+            .find((g) => g?.from === head);
+          if (gap) {
+            view.dispatch({ selection: { anchor: gap.to + 1 } });
+            return;
+          }
+        }
         const headLine = doc.lineAt(head);
         const headPrefix = linePrefix(view, headLine.from, headLine.to);
         // Left (or Shift+Left) from the first letter continues to the previous line.
@@ -868,6 +934,8 @@ function styledEditing(): Extension {
       { key: "Backspace", run: styledBackspace },
       { key: "Delete", run: styledDelete },
       { key: "Enter", run: styledEnter },
+      { key: "ArrowDown", run: arrowIntoTable(1) },
+      { key: "ArrowUp", run: arrowIntoTable(-1) },
     ])),
   ];
 }
@@ -906,16 +974,35 @@ abstract class BlockWidget extends WidgetType {
 }
 
 class TableWidget extends BlockWidget {
+  constructor(
+    source: string,
+    lines: number,
+    /** Pure Styled view: cells are edited in place instead of revealing the Markdown. */
+    readonly editable: boolean,
+  ) {
+    super(source, lines);
+  }
   eq(o: TableWidget) {
-    return o.source === this.source;
+    return o.source === this.source && o.editable === this.editable;
   }
   get estimatedHeight() {
     return this.lines * 38;
   }
   toDOM(view: EditorView) {
-    const el = this.shell(view, "cm-table-widget", 0);
-    el.innerHTML = `<div class="cm-table-scroll prose">${renderFragment(this.source)}</div>`;
+    if (!this.editable) {
+      const el = this.shell(view, "cm-table-widget", 0);
+      renderTable(el, this.source);
+      return el;
+    }
+    const el = document.createElement("div");
+    el.className = "cm-block-widget cm-table-widget";
+    renderTable(el, this.source);
+    makeTableEditable(view, el);
     return el;
+  }
+  /** While a cell is being typed in, keep the table as it is on screen so the cell keeps focus. */
+  updateDOM(dom: HTMLElement) {
+    return this.editable && isEditingTable(dom);
   }
 }
 
@@ -1056,14 +1143,17 @@ function collectBlocks(state: EditorState): BlockRange[] {
 function decorateBlocks(state: EditorState, ranges: BlockRange[]): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const dark = document.documentElement.dataset.theme === "dark";
+  const reveal = state.facet(revealFacet);
   for (const r of ranges) {
     const from = state.doc.lineAt(r.from).from;
     const to = state.doc.lineAt(r.to).to;
-    if (touches(state, from, to, true)) continue;
+    // In pure Styled view tables are edited cell by cell, so they never fall back to their source.
+    const editableTable = r.kind === "table" && !reveal;
+    if (!editableTable && touches(state, from, to, true)) continue;
     const lines = state.doc.lineAt(to).number - state.doc.lineAt(from).number + 1;
     const widget =
       r.kind === "table"
-        ? new TableWidget(r.source, lines)
+        ? new TableWidget(r.source, lines, editableTable)
         : r.kind === "math"
           ? new MathWidget(r.source, lines)
           : r.kind === "html"

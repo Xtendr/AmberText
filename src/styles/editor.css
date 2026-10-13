@@ -604,6 +604,35 @@
 .cm-table-scroll {
   overflow-x: auto;
 }
+/* The empty line Markdown requires under a table: collapsed, the table's own margin is the spacing. */
+.cm-editor .cm-line.cm-table-gap {
+  height: 0;
+  overflow: hidden;
+}
+/* Editable tables (pure Styled view): you type in the cells, so no whole-block "Edit" hover. */
+.cm-table-widget.is-editable {
+  cursor: default;
+}
+.cm-table-widget.is-editable:hover {
+  background: none;
+  box-shadow: none;
+}
+.cm-table-widget.is-editable::after {
+  content: none;
+}
+.cm-table-widget.is-editable :is(th, td) {
+  cursor: text;
+}
+.cm-table-widget.is-editable :is(th, td):hover {
+  background: var(--accent-softer);
+}
+.cm-table-widget .is-editing,
+.cm-table-widget .is-editing:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--sheet);
+  white-space: pre-wrap;
+}
 .cm-table-scroll table {
   margin: 0 !important;
 }
