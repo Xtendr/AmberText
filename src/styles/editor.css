@@ -25,9 +25,9 @@
 .cm-editor .cm-content {
   flex: 1 1 auto;
   width: 100%;
-  max-width: calc(var(--measure) + 112px);
-  margin: 0 auto;
-  padding: 9vh 56px 42vh;
+  /* Full width, with the text column centred by padding: a click in the empty margins still lands on
+     the nearest line instead of falling outside the editor. */
+  padding: 9vh max(56px, calc((100% - var(--measure)) / 2)) 42vh;
   caret-color: var(--accent);
   user-select: text;
   -webkit-user-select: text;
