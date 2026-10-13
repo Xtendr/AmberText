@@ -442,6 +442,11 @@ kbd {
 .view-menu-btn .chev {
   color: var(--text-3);
 }
+.view-menu-btn .view-menu-extra {
+  margin-left: -2px;
+  color: var(--text-3);
+  font-weight: 500;
+}
 .seg.full {
   display: flex;
 }

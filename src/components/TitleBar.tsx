@@ -215,6 +215,7 @@ function SyntaxMenuButton() {
   const ref = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const live = useStore((s) => s.settings.livePreview);
+  const reveal = useStore((s) => s.settings.revealSyntax);
   const visible = useStore((s) => !!s.activeId && s.settings.viewMode !== "read");
   if (!visible) return null;
   const show = () => {
@@ -241,8 +242,16 @@ function SyntaxMenuButton() {
     });
   };
   return (
-    <button ref={ref} className="view-menu-btn fade-on-type" onClick={show} aria-expanded={open} aria-haspopup="menu" data-tip="Editor view">
+    <button
+      ref={ref}
+      className="view-menu-btn fade-on-type"
+      onClick={show}
+      aria-expanded={open}
+      aria-haspopup="menu"
+      data-tip={!live ? "Plain Markdown" : reveal ? "Styled, showing Markdown while editing" : "Styled"}
+    >
       {live ? "Styled" : "Markdown"}
+      {live && reveal && <span className="view-menu-extra">+ Markdown</span>}
       <ChevronDown size={13} className="chev" />
     </button>
   );
