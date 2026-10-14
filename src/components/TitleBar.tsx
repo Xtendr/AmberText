@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import type { Doc } from "../state/store";
 import { BookOpen, ChevronDown, Columns2, PanelLeft, PenLine, Plus, Search, X } from "lucide-react";
 import { getState, isDirty, setState, useStore, type ViewMode } from "../state/store";
 import { closeDoc, closeOthers, displayName, activate, moveTab, newDoc, openContextMenu, setViewMode, toggleSidebar } from "../state/actions";
@@ -57,12 +58,83 @@ function AppMenuButton() {
   );
 }
 
+/** Tabs never shrink below this, so a title stays readable; the rest go into the "+N" menu. */
+const TAB_MIN = 140;
+const TAB_GAP = 2;
+const NEW_BTN = 30;
+const MORE_BTN = 58;
+
+/** How many tabs fit in `width` at their readable minimum, leaving room for "+" and, if needed, "+N". */
+function tabCapacity(width: number, count: number): number {
+  const fits = (room: number) => Math.max(1, Math.floor((room + TAB_GAP) / (TAB_MIN + TAB_GAP)));
+  if (fits(width - NEW_BTN) >= count) return count;
+  return fits(width - NEW_BTN - MORE_BTN);
+}
+
+/** The tabs in their usual order, but the active one always gets a visible spot (the last one if needed). */
+function visibleTabs(docs: Doc[], activeId: string | null, cap: number): Doc[] {
+  if (docs.length <= cap) return docs;
+  const shown = docs.slice(0, cap);
+  if (activeId && !shown.some((d) => d.id === activeId)) {
+    const active = docs.find((d) => d.id === activeId);
+    if (active) shown[cap - 1] = active;
+  }
+  return shown;
+}
+
+function OverflowButton({ hidden }: { hidden: Doc[] }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const show = () => {
+    const r = ref.current!.getBoundingClientRect();
+    setOpen(true);
+    openContextMenu(
+      r.left,
+      r.bottom + 6,
+      hidden.map((d) => ({ label: displayName(d), shortcut: isDirty(d) ? "●" : undefined, run: () => activate(d.id) })),
+    );
+    const unsub = useStore.subscribe((st) => {
+      if (!st.contextMenu) {
+        setOpen(false);
+        unsub();
+      }
+    });
+  };
+  return (
+    <button
+      ref={ref}
+      className="tab-more"
+      onClick={show}
+      aria-expanded={open}
+      aria-haspopup="menu"
+      aria-label={`${hidden.length} more open documents`}
+      data-tip={`${hidden.length} more open ${hidden.length === 1 ? "document" : "documents"}`}
+    >
+      +{hidden.length}
+      {hidden.some(isDirty) && <span className="tab-more-dot" />}
+      <ChevronDown size={12} className="chev" />
+    </button>
+  );
+}
+
 function Tabs() {
   const docs = useStore((s) => s.docs);
   const activeId = useStore((s) => s.activeId);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const strip = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft || "0"));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const shown = width > 0 ? visibleTabs(docs, activeId, tabCapacity(width, docs.length)) : docs;
+  const hidden = docs.filter((d) => !shown.includes(d));
   const drag = useRef<{ id: string; x: number; active: boolean; index: number | null } | null>(null);
 
   const dropIndexAt = (x: number) => {
@@ -95,10 +167,10 @@ function Tabs() {
 
   return (
     <div className="tb-tabs fade-on-type" role="tablist" ref={strip} data-tauri-drag-region>
-      {docs.map((d, i) => {
+      {shown.map((d, i) => {
         const dirty = isDirty(d);
         const draft = !d.path;
-        const showDrop = dragId && dropIndex === i && dragId !== d.id && docs[i - 1]?.id !== dragId;
+        const showDrop = dragId && dropIndex === i && dragId !== d.id && shown[i - 1]?.id !== dragId;
         return (
           <div
             key={d.id}
@@ -127,8 +199,10 @@ function Tabs() {
               const g = drag.current;
               drag.current = null;
               if (g?.active && g.index != null) {
+                // The drop position counts visible tabs; turn it into a place in the full list.
                 const from = docs.findIndex((x) => x.id === g.id);
-                moveTab(g.id, g.index > from ? g.index - 1 : g.index);
+                const to = g.index < shown.length ? docs.indexOf(shown[g.index]) : docs.indexOf(shown[shown.length - 1]) + 1;
+                moveTab(g.id, to > from ? to - 1 : to);
               }
               setDragId(null);
               setDropIndex(null);
@@ -163,6 +237,7 @@ function Tabs() {
           </div>
         );
       })}
+      {hidden.length > 0 && <OverflowButton hidden={hidden} />}
       <button className="icon-btn sm tab-new" onClick={() => newDoc()} data-tip="New document" data-kbd={keysFor("new")}>
         <Plus size={15} />
       </button>

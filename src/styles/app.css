@@ -242,7 +242,8 @@ kbd {
   align-items: center;
   gap: 2px;
   min-width: 0;
-  flex: 0 1 auto;
+  /* Takes the free space so it can measure how many tabs fit; the empty part still drags the window. */
+  flex: 1 1 auto;
   height: 100%;
   padding-left: 2px;
   overflow: hidden;
@@ -250,7 +251,7 @@ kbd {
 .tab {
   position: relative;
   height: 32px;
-  min-width: 72px;
+  min-width: 140px;
   max-width: 210px;
   flex: 0 1 auto;
   display: flex;
@@ -354,9 +355,58 @@ kbd {
 .tab-new {
   margin-left: 2px;
 }
+/* Hairline between inactive tabs, so each one has an edge. Hidden beside the active or hovered tab. */
+.tab + .tab::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--line-strong);
+  transition: opacity var(--t-fast);
+}
+.tab.is-active::after,
+.tab:hover::after,
+.tab.is-active + .tab::after,
+.tab:hover + .tab::after {
+  opacity: 0;
+}
+/* "+N" button holding the tabs that don't fit */
+.tab-more {
+  height: 26px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 0 6px 0 9px;
+  border-radius: var(--r-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+.tab-more:hover,
+.tab-more[aria-expanded="true"] {
+  background: var(--hover);
+  color: var(--text);
+}
+.tab-more .chev {
+  color: var(--text-3);
+}
+.tab-more-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
 
 .tb-drag {
-  flex: 1 1 24px;
+  flex: 0 0 24px;
   height: 100%;
   min-width: 24px;
 }
