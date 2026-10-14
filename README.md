@@ -74,7 +74,7 @@ Everything renders right in the editor:
 | **Diagrams** | ` ```mermaid ` | Flowcharts, sequence, state, Gantt, pie, timeline, journey and git diagrams |
 | **Maths** | `$…$` and `$$…$$` | Typeset with KaTeX |
 | **Code** | ` ```ts ` | Highlighted for over a hundred languages, with a copy button |
-| **Tables** | `\| a \| b \|` | Real tables. **Tab** moves between cells and tidies the columns |
+| **Tables** | `\| a \| b \|` | Real tables you type straight into. **Tab** and the arrow keys move between cells, and the columns stay tidy |
 | **Properties** | `---` front matter | A tidy card at the top of the note |
 | **And more** | | Footnotes, ==highlights==, task lists, images, links between headings |
 
@@ -138,10 +138,10 @@ status bar as you go.
 
 ### And the rest
 
-- **Folders and tabs:** open a folder of notes, create and rename files in the sidebar, and keep several notes open as tabs.
+- **Folders and tabs:** open a folder of notes, create and rename files in the sidebar, and keep several notes open as tabs. Tabs that don't fit wait in a **+N** menu, so every title stays readable.
 - **Find and replace** across the note, with match case, whole words and regular expressions.
 - **Export** as HTML or PDF, or copy as rich text to paste into email, Docs or Slack.
-- **Images:** paste or drop them in and they're copied into an `assets` folder next to your note.
+- **Images:** paste, drop or insert them with **/image** and they're copied into an `assets` folder next to your note. They come along when you save the note somewhere else, and HTML exports carry them inside the file.
 - **Saves as you go**, and notices when a file was changed by another app.
 
 ## Build it yourself
@@ -170,7 +170,7 @@ npm install
 AmberText is a [Tauri 2](https://tauri.app) desktop app: a small Rust core for files and windows, with the interface in
 web technology. That keeps the app small (about 10 MB) and fast to start.
 
-- **Editor:** [CodeMirror 6](https://codemirror.net) with a live-preview layer that hides Markdown syntax away from the cursor and draws tables, diagrams, maths, images and properties as widgets.
+- **Editor:** [CodeMirror 6](https://codemirror.net) with a live-preview layer that keeps Markdown syntax hidden while you edit (or shows it around the cursor, if you prefer) and draws tables, diagrams, maths, images and properties as widgets. Tables are edited cell by cell.
 - **Rendering:** [markdown-it](https://github.com/markdown-it/markdown-it) with footnotes, highlights, [KaTeX](https://katex.org), [Mermaid](https://mermaid.js.org) and [highlight.js](https://highlightjs.org). Output is sanitised with DOMPurify.
 - **Interface:** React and zustand, with Inter, Newsreader and JetBrains Mono.
 - **AI:** downloads a pinned [llama.cpp](https://github.com/ggml-org/llama.cpp) server and a Qwen3.5 model the first time you ask, checks them against known SHA-256 hashes, and runs them locally. Nothing you write is sent anywhere.
