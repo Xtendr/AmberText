@@ -37,6 +37,7 @@ name = "ambertext"
 version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
+ "dunce",
  "serde",
  "serde_json",
  "sha2",
@@ -47,6 +48,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
  "trash",
+ "unicode-segmentation",
  "ureq",
  "window-vibrancy 0.6.0",
 ]

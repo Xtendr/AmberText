@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Compartment, EditorState, Facet, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   drawSelection,
@@ -19,7 +19,7 @@ import { search, searchKeymap, searchPanelOpen } from "@codemirror/search";
 import { completionKeymap } from "@codemirror/autocomplete";
 import type { SyntaxNode } from "@lezer/common";
 import { getState, setState, useStore, type Doc, type Settings } from "../state/store";
-import { bridge } from "./bridge";
+import { bridge, docIdFacet, documentIdentity } from "./bridge";
 import { formattingKeymap } from "./commands";
 import { focusMode, marginHighlight, typewriter } from "./extras";
 import { createFindPanel } from "./FindPanel";
@@ -33,8 +33,6 @@ import { aiFlashField, aiTargetField } from "./aiInline";
 import { htmlToMarkdown, isConvertibleHtml } from "../lib/htmlToMarkdown";
 import { smartEditing } from "./smartEdit";
 import { Highlight } from "./mdExtensions";
-
-const docIdFacet = Facet.define<string, string | null>({ combine: (v) => v[0] ?? null });
 
 const live = new Compartment();
 const focus = new Compartment();
@@ -190,7 +188,7 @@ export function createEditorState(doc: Doc): EditorState {
   return EditorState.create({
     doc: doc.content,
     extensions: [
-      docIdFacet.of(doc.id),
+      documentIdentity.of(docIdFacet.of(doc.id)),
       baseExtensions,
       live.of(s.live),
       focus.of(s.focus),
@@ -261,7 +259,8 @@ export function Editor() {
     reconfigure(view);
     const scroll = saved?.scroll ?? 0;
     // Open on the clean rendered page unless there's nothing to read yet; the cursor appears where you click.
-    const autofocus = !doc.content.trim();
+    const autofocus = !doc.content.trim() && !bridge.skipAutofocus;
+    bridge.skipAutofocus = false;
     requestAnimationFrame(() => {
       view.scrollDOM.scrollTop = scroll;
       if (autofocus && getState().settings.viewMode !== "read") view.focus();

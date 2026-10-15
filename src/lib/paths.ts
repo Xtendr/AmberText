@@ -43,15 +43,22 @@ export function isExternalUrl(href: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(href) && !/^[A-Za-z]:[\\/]/.test(href);
 }
 
+/** The file part of a link target, decoded once the way the rendered preview does. */
+export function linkFilePath(ref: string): string {
+  // Split URL suffixes before decoding: %23/%3F are filename characters,
+  // while raw #/? start a fragment/query. Decode exactly once, including %25.
+  // A lone % stays literal, as markdown-it's link normalisation leaves it.
+  const target = ref.split(/[?#]/, 1)[0];
+  try {
+    return decodeURIComponent(target.replace(/%(?![0-9a-f]{2})/gi, "%25"));
+  } catch {
+    return target;
+  }
+}
+
 /** Resolves a relative reference (as written in Markdown) against a directory. */
 export function resolvePath(baseDir: string, ref: string): string {
-  let target = ref;
-  try {
-    target = decodeURI(ref);
-  } catch {
-    /* keep as-is */
-  }
-  target = target.split("#")[0].split("?")[0];
+  const target = linkFilePath(ref);
   if (isAbsolute(target)) return target;
   const sep = sepOf(baseDir);
   const parts = baseDir.split(SPLIT);
@@ -64,14 +71,22 @@ export function resolvePath(baseDir: string, ref: string): string {
   return parts.join(sep);
 }
 
+/** Drops the Windows extended-length prefix so one file has one path everywhere. */
+export function plainPath(path: string): string {
+  if (/^\\\\\?\\UNC\\/i.test(path)) return "\\\\" + path.slice(8);
+  return /^\\\\\?\\[A-Za-z]:/.test(path) ? path.slice(4) : path;
+}
+
 export function samePath(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
-  const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "").toLowerCase();
+  // Lexical UI paths must never merge case-distinct entries. Physical aliases
+  // are resolved by the native canonical revision, not by guessing from the OS.
+  const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "");
   return norm(a) === norm(b);
 }
 
 export function isInside(child: string, parent: string): boolean {
-  const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "").toLowerCase();
+  const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "");
   return norm(child).startsWith(norm(parent) + "/");
 }
 
@@ -82,13 +97,13 @@ export function relativeTo(path: string, root: string): string {
 }
 
 /** Relative path from a directory to a file, using forward slashes (for Markdown links). */
-export function relativeLink(fromDir: string, toPath: string): string {
+export function relativeLink(fromDir: string, toPath: string, encodeSegment: (segment: string) => string = encodeURI): string {
   const a = fromDir.replace(/[\\/]+$/, "").split(SPLIT);
   const b = toPath.split(SPLIT);
   let i = 0;
-  while (i < a.length && i < b.length && a[i].toLowerCase() === b[i].toLowerCase()) i++;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
   const ups = a.slice(i).map(() => "..");
-  return [...ups, ...b.slice(i)].map((s) => encodeURI(s)).join("/");
+  return [...ups, ...b.slice(i)].map(encodeSegment).join("/");
 }
 
 export function sanitizeFileName(name: string): string {

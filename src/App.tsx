@@ -1,10 +1,17 @@
-import { useEffect, useLayoutEffect, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
+import { preferenceStorageWarning } from "./lib/preferenceStorage";
 import { useStore, activeDoc, isDirty, getState, setState } from "./state/store";
 import {
   applyAppearance,
   checkExternalChanges,
   displayName,
+  closeWindow,
   flushAll,
+  flushRecovery,
+  initializeHistory,
+  maintainHistory,
+  retryHistory,
+  saveActiveAs,
   handleDroppedPaths,
   openPaths,
   refreshTree,
@@ -20,6 +27,8 @@ import { Sidebar } from "./components/Sidebar";
 import { Sheet } from "./components/Sheet";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { HistoryPanel } from "./components/HistoryPanel";
+import { AssetDiagnosticsPanel } from "./components/AssetDiagnosticsPanel";
 import { DialogHost, ToastHost, ContextMenuHost, TooltipHost, DropOverlay } from "./components/Overlays";
 
 const FONT_STACKS = {
@@ -35,6 +44,22 @@ export function App() {
   const fullscreen = useStore((s) => s.fullscreen);
   const palette = useStore((s) => s.palette);
   const settingsOpen = useStore((s) => s.settingsOpen);
+  const historyOpen = useStore((s) => s.historyOpen);
+  const assetsOpen = useStore((s) => s.assetsOpen);
+  const recoveryWarning = useStore(s => s.recoveryWarning);
+  const historyWarning = useStore(s => s.historyWarning);
+  const [prefsWarning, setPrefsWarning] = useState(preferenceStorageWarning);
+  useEffect(() => {
+    void initializeHistory();
+    const timer = window.setInterval(() => void maintainHistory(),5*60*1000);
+    return () => window.clearInterval(timer);
+  },[settings.historyEnabled]);
+  useEffect(() => {
+    const update = () => setPrefsWarning(preferenceStorageWarning());
+    window.addEventListener("ambertext:preference-storage", update);
+    update();
+    return () => window.removeEventListener("ambertext:preference-storage", update);
+  }, []);
   const dark = useStore((s) => s.dark);
   const title = useStore((s) => {
     const d = activeDoc(s);
@@ -102,7 +127,7 @@ export function App() {
         if (s.contextMenu) return setState({ contextMenu: null });
         if (s.zen && !s.palette && !s.dialog && !s.settingsOpen) return void toggleZen(false);
       }
-      if (getState().dialog) return;
+      if (getState().dialog || getState().historyOpen || getState().assetsOpen) return;
       handleGlobalKey(e);
       const idle = !document.activeElement || document.activeElement === document.body;
       const s = getState();
@@ -155,9 +180,7 @@ export function App() {
       void checkExternalChanges();
       void refreshTree();
     });
-    const offClose = win.onCloseRequested(async () => {
-      await flushAll();
-    });
+    const offClose = win.onCloseRequested(closeWindow);
     const offMenu = onNativeEvent<string>("menu", (id) => {
       const cmd = MENU_TO_COMMAND[id];
       if (cmd) runCommand(cmd);
@@ -173,7 +196,9 @@ export function App() {
         if (e.type === "drop" && e.paths.length) void handleDroppedPaths(e.paths, e.x, e.y);
       }
     });
-    const persist = () => void flushAll();
+    // Closing already verified the native journal. Do not start a second IPC write
+    // into a webview that is being destroyed; ordinary browser reload remains best effort.
+    const persist = () => { if (!win.hasVerifiedClose()) void flushAll(); };
     window.addEventListener("pagehide", persist);
     // Not requestAnimationFrame: WebKit doesn't run frames for a hidden window, so it would never fire.
     setTimeout(() => void win.show(), 30);
@@ -198,8 +223,18 @@ export function App() {
       data-typing={typing && settings.quietChrome && !palette && !settingsOpen ? "true" : "false"}
       data-zen={zen ? "true" : "false"}
       data-fullscreen={fullscreen ? "true" : "false"}
+      data-recovery-warning={recoveryWarning || prefsWarning || historyWarning ? "true" : "false"}
     >
       <TitleBar />
+      {(recoveryWarning || prefsWarning || historyWarning) && <div className="recovery-warnings">
+      {historyWarning && <div className="recovery-warning" role="alert"><span>{historyWarning}</span><button type="button" onClick={() => void retryHistory()}>Retry history</button><button type="button" onClick={() => setState({ historyOpen: activeDoc()?.id ?? "all" })}>Review history</button></div>}
+      {prefsWarning && <div className="recovery-warning" role="alert">{prefsWarning}</div>}
+      {recoveryWarning && <div className="recovery-warning" role="alert">
+        <span>{recoveryWarning}</span>
+        <button type="button" onClick={() => void flushRecovery()}>Retry recovery</button>
+        <button type="button" onClick={() => void saveActiveAs()}>Save a copy</button>
+      </div>}
+      </div>}
       <div className="body">
         <Sidebar />
         <Sheet />
@@ -210,6 +245,8 @@ export function App() {
       <ToastHost />
       <ContextMenuHost />
       <DialogHost />
+      {historyOpen && <HistoryPanel />}
+      {assetsOpen && <AssetDiagnosticsPanel />}
       <TooltipHost />
     </div>
   );

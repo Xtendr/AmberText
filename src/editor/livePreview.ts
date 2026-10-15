@@ -3,7 +3,7 @@ import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Extens
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import katex from "katex";
-import { escapeHtml, renderFragment, splitFrontmatter } from "../lib/markdown";
+import { escapeHtml, referenceUtils, renderFragment, splitFrontmatter } from "../lib/markdown";
 import { plainInline } from "../lib/text";
 import { cachedMermaid, renderMermaid } from "../lib/mermaid";
 import { toggleTaskAt } from "./commands";
@@ -424,7 +424,7 @@ function buildInline(view: EditorView): DecorationSet {
             const marks = children(node, "LinkMark");
             const sameLine = doc.lineAt(ref.from).number === doc.lineAt(ref.to).number;
             if (!active && url && sameLine && marks.length >= 2) {
-              const src = doc.sliceString(url.from, url.to).replace(/^<|>$/g, "");
+              const src = referenceUtils.unescape(doc.sliceString(url.from, url.to).replace(/^<|>$/g, ""));
               const alt = doc.sliceString(marks[0].to, marks[1].from);
               out.push(Decoration.replace({ widget: new ImageWidget(imageResolver(src), alt, linkedImages.has(ref.from)) }).range(ref.from, ref.to));
             } else {

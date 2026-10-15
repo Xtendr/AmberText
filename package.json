@@ -54,6 +54,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
+    "docx": "9.6.1",
     "playwright-core": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CircleAlert, CircleCheck, FileDown, Info, X } from "lucide-react";
 import { getState, setState, useStore, type MenuItem } from "../state/store";
 import { dismissToast, resolveDialog } from "../state/actions";
+import { bridge } from "../editor/bridge";
 
 /* ------------------------------------------------------------------ */
 /* Dialog                                                              */
@@ -15,13 +16,19 @@ export function DialogHost() {
 
   useLayoutEffect(() => {
     if (!dialog) return;
+    const previous = document.activeElement as HTMLElement | null;
     setValue(dialog.input?.value ?? "");
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       if (dialog.input && input.current) {
         input.current.focus();
         input.current.setSelectionRange(0, dialog.input.selectUntil ?? dialog.input.value.length);
       } else primaryRef.current?.focus();
     });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (previous?.isConnected && previous !== document.body) previous.focus();
+      else bridge.focus();
+    };
   }, [dialog]);
 
   if (!dialog) return null;
@@ -37,7 +44,7 @@ export function DialogHost() {
       if (dialog.input && !value.trim()) return;
       resolveDialog(primary.id, value);
     } else if (e.key === "Tab") {
-      const nodes = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>("input, button")];
+      const nodes = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>("input:not(:disabled), button:not(:disabled)")];
       const i = nodes.indexOf(document.activeElement as HTMLElement);
       const next = e.shiftKey ? (i <= 0 ? nodes.length - 1 : i - 1) : (i + 1) % nodes.length;
       e.preventDefault();
@@ -51,22 +58,23 @@ export function DialogHost() {
 
   return (
     <div className="scrim dim" onMouseDown={(e) => e.target === e.currentTarget && resolveDialog(null)}>
-      <div className="dialog popover" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" onKeyDown={onKey}>
+      <div className="dialog popover" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby={dialog.message ? "dialog-message" : undefined} onKeyDown={onKey}>
         <h2 id="dialog-title">{dialog.title}</h2>
-        {dialog.message && <p>{dialog.message}</p>}
+        {dialog.message && <p id="dialog-message">{dialog.message}</p>}
         {dialog.input && (
           <input
             ref={input}
             className="dialog-input"
             value={value}
             placeholder={dialog.input.placeholder}
+            aria-label={dialog.input.placeholder || dialog.title}
             spellCheck={false}
             onChange={(e) => setValue(e.target.value)}
           />
         )}
         <div className="dialog-actions">
           {left.map((a) => (
-            <button key={a.id} className="btn danger" onClick={() => resolveDialog(a.id, value)}>
+            <button key={a.id} ref={a === primary ? primaryRef : undefined} className="btn danger" disabled={a === primary && !!dialog.input && !value.trim()} onClick={() => resolveDialog(a.id, value)}>
               {a.label}
             </button>
           ))}
@@ -134,6 +142,7 @@ export function ContextMenuHost() {
 
   useLayoutEffect(() => {
     if (!menu || !ref.current) return setPos(null);
+    const previous = document.activeElement as HTMLElement | null;
     const r = ref.current.getBoundingClientRect();
     const pad = 8;
     let x = menu.x;
@@ -142,8 +151,16 @@ export function ContextMenuHost() {
     if (y + r.height > window.innerHeight - pad) y = Math.max(pad, window.innerHeight - pad - r.height);
     setPos({ x, y });
     setActive(-1);
-    ref.current.focus();
+    return () => {
+      if (previous?.isConnected && previous !== document.body) previous.focus();
+    };
   }, [menu]);
+
+  // The first render is hidden while placement is measured. Focus only after
+  // it becomes visible, otherwise the browser ignores the focus request.
+  useLayoutEffect(() => {
+    if (menu && pos) ref.current?.focus();
+  }, [menu, pos]);
 
   useEffect(() => {
     if (!menu) return;
@@ -189,6 +206,11 @@ export function ContextMenuHost() {
       e.preventDefault();
       e.stopPropagation();
       setState({ contextMenu: null });
+    } else if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      setActive(e.key === "Home" ? selectable[0] : selectable[selectable.length - 1]);
+    } else if (e.key === "Tab") {
+      setState({ contextMenu: null });
     }
   };
 
@@ -197,6 +219,8 @@ export function ContextMenuHost() {
       ref={ref}
       className="menu popover"
       role="menu"
+      aria-label="Actions"
+      aria-activedescendant={active >= 0 ? `context-action-${active}` : undefined}
       tabIndex={-1}
       style={{ left: pos?.x ?? menu.x, top: pos?.y ?? menu.y, visibility: pos ? "visible" : "hidden", outline: "none" }}
       onKeyDown={onKey}
@@ -209,6 +233,8 @@ export function ContextMenuHost() {
           <button
             key={it.id ?? i}
             role="menuitem"
+            id={`context-action-${i}`}
+            tabIndex={-1}
             className={`menu-item${it.danger ? " danger" : ""}${i === active ? " is-active" : ""}`}
             disabled={it.disabled}
             onMouseEnter={() => setActive(i)}

@@ -198,6 +198,11 @@ export function AiMenu() {
           placeholder={subLabel ? `${subLabel}…` : menu.scope === "selection" ? "Ask AI to edit or explain…" : "Ask AI to write or review…"}
           spellCheck={false}
           aria-autocomplete="list"
+          aria-label={subLabel ? `Ask AI: ${subLabel}` : menu.scope === "selection" ? "Ask AI about the selection" : "Ask AI about the document"}
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="ai-menu-options"
+          aria-activedescendant={entries[active] ? `ai-menu-option-${active}` : undefined}
         />
         {query.trim() && (
           <kbd className="ai-menu-enter">
@@ -205,7 +210,7 @@ export function AiMenu() {
           </kbd>
         )}
       </div>
-      <div className="ai-menu-list" ref={list} role="listbox">
+      <div id="ai-menu-options" className="ai-menu-list" ref={list} role="listbox" aria-label="AI actions">
         {entries.map((e, i) => {
           const header = e.group !== lastGroup ? e.group : null;
           lastGroup = e.group;
@@ -214,6 +219,7 @@ export function AiMenu() {
               {header && !sub && <div className="ai-menu-section">{header}</div>}
               <button
                 role="option"
+                id={`ai-menu-option-${i}`}
                 aria-selected={i === active}
                 className={`ai-menu-item${i === active ? " is-active" : ""}${e.custom ? " is-custom" : ""}`}
                 onMouseMove={() => i !== active && setActive(i)}

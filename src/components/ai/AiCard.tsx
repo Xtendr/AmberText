@@ -143,7 +143,7 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
 
   useLayoutEffect(() => {
     if (docked || (s.status !== "loading" && s.status !== "done")) return;
-    requestAnimationFrame(() => root.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    requestAnimationFrame(() => root.current?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
   }, [docked, s.status]);
 
   const unchanged = done && diffable && s.output.trim() === s.original.trim();
@@ -264,14 +264,14 @@ export function AiCard({ s, docked }: { s: AiSession; docked?: boolean }) {
             )}
           </div>
           {diffable && !unchanged && (
-            <button className={`icon-btn sm${showDiff ? " is-on" : ""}`} onClick={() => setDiffPref(!showDiff)} data-tip={showDiff ? "Hide changes" : "Show changes"} aria-pressed={showDiff}>
+            <button aria-label={showDiff ? "Hide changes" : "Show changes"} className={`icon-btn sm${showDiff ? " is-on" : ""}`} onClick={() => setDiffPref(!showDiff)} data-tip={showDiff ? "Hide changes" : "Show changes"} aria-pressed={showDiff}>
               <Diff size={14} />
             </button>
           )}
-          <button className="icon-btn sm" onClick={retry} data-tip="Try again">
+          <button aria-label="Try again" className="icon-btn sm" onClick={retry} data-tip="Try again">
             <RotateCcw size={14} />
           </button>
-          <button className="icon-btn sm" onClick={() => void copyOutput()} data-tip="Copy">
+          <button aria-label="Copy AI output" className="icon-btn sm" onClick={() => void copyOutput()} data-tip="Copy">
             <Copy size={14} />
           </button>
           {s.action.kind === "rewrite" && s.action.scope === "selection" && !unchanged && canReplace(s) && (

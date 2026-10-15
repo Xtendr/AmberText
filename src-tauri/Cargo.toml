@@ -26,6 +26,8 @@ trash = "5"
 base64 = "0.22"
 ureq = { version = "2", features = ["json"] }
 sha2 = "0.10"
+dunce = "1"
+unicode-segmentation = "1"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"

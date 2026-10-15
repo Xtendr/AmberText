@@ -91,7 +91,7 @@ export function ModelPicker({
             {manage && (
               <span className="ai-tier-actions" onClick={(e) => e.stopPropagation()}>
                 {installing === m.id ? (
-                  <button className="icon-btn sm" onClick={cancelInstall} data-tip="Cancel download">
+                  <button aria-label={`Cancel ${m.name} model download`} className="icon-btn sm" onClick={cancelInstall} data-tip="Cancel download">
                     <X size={14} />
                   </button>
                 ) : has ? (
@@ -101,7 +101,7 @@ export function ModelPicker({
                         <Check size={14} strokeWidth={2.4} />
                       </span>
                     )}
-                    <button className="icon-btn sm" onClick={() => void remove(m)} data-tip="Remove model">
+                    <button aria-label={`Remove ${m.name} model`} className="icon-btn sm" onClick={() => void remove(m)} data-tip="Remove model">
                       <Trash2 size={14} />
                     </button>
                   </>

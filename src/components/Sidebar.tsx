@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -31,9 +31,10 @@ import {
   trashEntry,
 } from "../state/actions";
 import { fileManagerName, fsApi, isTauri, type FileEntry } from "../lib/platform";
-import { basename, extname, samePath, stripExt } from "../lib/paths";
+import { basename, dirname, extname, join, samePath, sanitizeFileName, stripExt } from "../lib/paths";
 import { extractHeadings, formatCount } from "../lib/text";
 import { commandById, formatKeys } from "../commands";
+import { WorkspaceSearchPanel } from "./WorkspaceSearchPanel";
 
 const INDENT = 14;
 
@@ -57,6 +58,7 @@ function InlineInput({ initial, onDone, depth, icon }: { initial: string; onDone
       <input
         ref={ref}
         className="tree-input"
+        aria-label="File or folder name"
         defaultValue={initial}
         spellCheck={false}
         onKeyDown={(e: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -70,7 +72,9 @@ function InlineInput({ initial, onDone, depth, icon }: { initial: string; onDone
   );
 }
 
-function TreeNode({ entry, depth }: { entry: FileEntry; depth: number }) {
+interface TreeNavigation { focused: string | null; focus: (path: string) => void }
+function TreeNode({ entry, depth, nav, position, size }: { entry: FileEntry; depth: number; nav: TreeNavigation; position: number; size: number }) {
+  const groupId = useId();
   const expanded = useStore((s) => s.expanded.some((p) => samePath(p, entry.path)));
   const activePath = useStore((s) => activeDoc(s)?.path ?? null);
   const isOpenDoc = useStore((s) => s.docs.some((d) => samePath(d.path, entry.path)));
@@ -131,7 +135,15 @@ function TreeNode({ entry, depth }: { entry: FileEntry; depth: number }) {
         icon={entry.isDir ? <Folder size={15} className="tree-icon" /> : <FileText size={15} className="tree-icon" />}
         onDone={(v) => {
           setEdit(null);
-          if (v) void renameEntry(entry.path, v);
+          const focusRow = (path: string) => requestAnimationFrame(() => {
+            const rows = document.querySelectorAll<HTMLElement>("[data-tree-path]");
+            ([...rows].find(row => row.dataset.treePath === path) ?? [...rows].find(row => row.dataset.treePath === entry.path))?.focus();
+          });
+          if (v) {
+            let name = sanitizeFileName(v);
+            if (!entry.isDir && !extname(name)) name += "." + extname(entry.path);
+            void renameEntry(entry.path, v).then(() => focusRow(join(dirname(entry.path), name)));
+          } else focusRow(entry.path);
         }}
       />
     );
@@ -145,14 +157,42 @@ function TreeNode({ entry, depth }: { entry: FileEntry; depth: number }) {
         role="treeitem"
         aria-expanded={entry.isDir ? expanded : undefined}
         aria-selected={active}
-        tabIndex={-1}
-        onClick={() => (entry.isDir ? toggleExpanded(entry.path) : void openPath(entry.path))}
+        aria-level={depth + 1}
+        aria-posinset={position}
+        aria-setsize={size}
+        aria-owns={entry.isDir && expanded ? groupId : undefined}
+        data-tree-path={entry.path}
+        tabIndex={nav.focused === entry.path ? 0 : -1}
+        onFocus={() => nav.focus(entry.path)}
+        onClick={(e) => { e.currentTarget.focus(); entry.isDir ? toggleExpanded(entry.path) : void openPath(entry.path); }}
         onContextMenu={(e) => {
           e.preventDefault();
           menu(e.clientX, e.clientY);
         }}
         onKeyDown={(e) => {
-          if (e.key === "F2") setEdit({ kind: "rename", path: entry.path });
+          const rows = [...(e.currentTarget.closest(".tree")?.querySelectorAll<HTMLElement>("[data-tree-path]") ?? [])];
+          const at = rows.indexOf(e.currentTarget);
+          let target: HTMLElement | undefined;
+          if (e.key === "ArrowDown") target = rows[Math.min(at + 1, rows.length - 1)];
+          else if (e.key === "ArrowUp") target = rows[Math.max(at - 1, 0)];
+          else if (e.key === "Home") target = rows[0];
+          else if (e.key === "End") target = rows[rows.length - 1];
+          else if (e.key === "ArrowRight" && entry.isDir) {
+            if (!expanded) toggleExpanded(entry.path, true);
+            else target = rows[at + 1];
+          } else if (e.key === "ArrowLeft") {
+            if (entry.isDir && expanded) toggleExpanded(entry.path, false);
+            else target = e.currentTarget.parentElement?.closest(".tree-children")?.previousElementSibling as HTMLElement | undefined;
+          } else if (e.key === "Enter" || e.key === " ") {
+            entry.isDir ? toggleExpanded(entry.path) : void openPath(entry.path);
+          } else if (e.key === "F2") setEdit({ kind: "rename", path: entry.path });
+          else if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            menu(rect.left, rect.bottom);
+          } else return;
+          e.preventDefault();
+          e.stopPropagation();
+          target?.focus();
         }}
         data-tip={depth > 2 ? entry.name : undefined}
       >
@@ -178,9 +218,9 @@ function TreeNode({ entry, depth }: { entry: FileEntry; depth: number }) {
         <span className="tree-name">{label}</span>
       </div>
       {entry.isDir && (expanded || creatingHere) && (
-        <div className="tree-children" role="group">
+        <div id={groupId} className="tree-children" role="group">
           {creatingHere && <NewEntryRow edit={edit!} depth={depth + 1} />}
-          {entry.children?.map((c) => <TreeNode key={c.path} entry={c} depth={depth + 1} />)}
+          {entry.children?.map((c, i, siblings) => <TreeNode key={c.path} entry={c} depth={depth + 1} nav={nav} position={i + 1} size={siblings.length} />)}
         </div>
       )}
     </>
@@ -208,6 +248,17 @@ function FilesPanel() {
   const edit = useStore((s) => s.treeEdit);
   const recent = useStore((s) => s.recentFiles);
   const recentFolders = useStore((s) => s.recentFolders);
+  const expanded = useStore((s) => s.expanded);
+  const [focused, setFocused] = useState<string | null>(null);
+  const visible: string[] = [];
+  const walk = (entries: FileEntry[]) => {
+    for (const entry of entries) {
+      visible.push(entry.path);
+      if (entry.isDir && expanded.some(p => samePath(p, entry.path))) walk(entry.children ?? []);
+    }
+  };
+  walk(ws?.tree ?? []);
+  const nav: TreeNavigation = { focused: focused && visible.includes(focused) ? focused : visible[0] ?? null, focus: setFocused };
 
   if (!ws) {
     const recentOutside = recent.slice(0, 6);
@@ -230,10 +281,10 @@ function FilesPanel() {
             <div className="sb-subhead">Recent folders</div>
             <div className="tree">
               {recentFolders.slice(0, 5).map((p) => (
-                <div key={p} className="tree-row" style={{ paddingLeft: 8 }} onClick={() => void openFolder(p)} data-tip={p}>
+                <button key={p} className="tree-row" style={{ paddingLeft: 8 }} onClick={() => void openFolder(p)} data-tip={p}>
                   <Folder size={15} className="tree-icon" strokeWidth={1.8} />
                   <span className="tree-name">{basename(p)}</span>
-                </div>
+                </button>
               ))}
             </div>
           </>
@@ -243,10 +294,10 @@ function FilesPanel() {
             <div className="sb-subhead">Recent documents</div>
             <div className="tree">
               {recentOutside.map((p) => (
-                <div key={p} className="tree-row" style={{ paddingLeft: 8 }} onClick={() => void openPath(p)} data-tip={p}>
+                <button key={p} className="tree-row" style={{ paddingLeft: 8 }} onClick={() => void openPath(p)} data-tip={p}>
                   <FileText size={15} className="tree-icon" strokeWidth={1.8} />
                   <span className="tree-name">{stripExt(basename(p))}</span>
-                </div>
+                </button>
               ))}
             </div>
           </>
@@ -266,35 +317,38 @@ function FilesPanel() {
         ? [{ separator: true as const }, ...others.map((p) => ({ label: basename(p), run: () => void openFolder(p) }))]
         : []),
       { separator: true },
+      { label: "Check images and links…", run: () => setState({ assetsOpen: true }) },
       { label: `Reveal in ${fileManagerName}`, disabled: !isTauri, run: () => void fsApi.reveal(ws.root) },
       { label: "Close folder", run: closeFolder },
     ]);
   };
 
   return (
-    <div className="sb-scroll" role="tree" aria-label="Files">
+    <div className="sb-scroll">
       <div className="sb-section-head">
         <button className="sb-section-title" data-tip={ws.root} aria-haspopup="menu" onClick={(e) => folderMenu(e.currentTarget)}>
           <span className="sb-section-name">{basename(ws.root)}</span>
           <ChevronDown size={12} strokeWidth={2.2} />
         </button>
         <div className="sb-section-actions">
-          <button className="icon-btn sm" data-tip="New document" onClick={() => setState({ treeEdit: { kind: "new-file", parent: ws.root } })}>
+          <button aria-label="New document in folder" className="icon-btn sm" data-tip="New document" onClick={() => setState({ treeEdit: { kind: "new-file", parent: ws.root } })}>
             <FilePlus size={14} />
           </button>
-          <button className="icon-btn sm" data-tip="New folder" onClick={() => setState({ treeEdit: { kind: "new-folder", parent: ws.root } })}>
+          <button aria-label="New folder" className="icon-btn sm" data-tip="New folder" onClick={() => setState({ treeEdit: { kind: "new-folder", parent: ws.root } })}>
             <FolderPlus size={14} />
           </button>
-          <button className="icon-btn sm" data-tip="Collapse all" onClick={collapseAll}>
+          <button aria-label="Collapse all folders" className="icon-btn sm" data-tip="Collapse all" onClick={collapseAll}>
             <ChevronsDownUp size={14} />
           </button>
-          <button className="icon-btn sm" data-tip="Close folder" onClick={closeFolder}>
+          <button aria-label="Close folder" className="icon-btn sm" data-tip="Close folder" onClick={closeFolder}>
             <X size={14} />
           </button>
         </div>
       </div>
       <div
         className="tree"
+        role="tree"
+        aria-label="Files"
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest(".tree-row")) return;
           e.preventDefault();
@@ -308,8 +362,8 @@ function FilesPanel() {
         }}
       >
         {rootCreating && <NewEntryRow edit={edit!} depth={0} />}
-        {ws.tree.map((e) => (
-          <TreeNode key={e.path} entry={e} depth={0} />
+        {ws.tree.map((e, i, siblings) => (
+          <TreeNode key={e.path} entry={e} depth={0} nav={nav} position={i + 1} size={siblings.length} />
         ))}
         {ws.tree.length === 0 && !rootCreating && (
           <div className="sb-empty">
@@ -391,12 +445,13 @@ function SidebarFooter() {
       <button
         className="icon-btn"
         data-tip="Settings"
+        aria-label="Settings"
         data-kbd={formatKeys(commandById.get("settings")?.keys).join("+")}
         onClick={() => setState((s) => ({ settingsOpen: !s.settingsOpen }))}
       >
         <Settings size={16} strokeWidth={1.8} />
       </button>
-      <button className="icon-btn" data-tip={`Theme: ${theme === "system" ? "match system" : theme}`} onClick={cycleTheme}>
+      <button aria-label={`Change theme, currently ${theme === "system" ? "match system" : theme}`} className="icon-btn" data-tip={`Theme: ${theme === "system" ? "match system" : theme}`} onClick={cycleTheme}>
         <ThemeIcon size={16} strokeWidth={1.8} />
       </button>
       <span className="sb-foot-stat">{ws ? `${formatCount(count)} document${count === 1 ? "" : "s"}` : ""}</span>
@@ -441,18 +496,19 @@ export function Sidebar() {
   const thumbRef = useRef<HTMLSpanElement>(null);
   return (
     <>
-      <aside className="sidebar fade-on-type" aria-hidden={!open}>
+      <aside className="sidebar fade-on-type" aria-hidden={!open} inert={!open}>
         <div className="sidebar-inner">
           <div className="seg full sb-tabs" role="tablist">
-            <span ref={thumbRef} className="seg-thumb" style={{ width: "calc(50% - 2px)", transform: tab === "files" ? "translateX(0)" : "translateX(100%)" }} />
+            <span ref={thumbRef} className="seg-thumb" style={{ width: "calc(33.333% - 2px)", transform: tab === "files" ? "translateX(0)" : tab === "outline" ? "translateX(100%)" : "translateX(200%)" }} />
             <button role="tab" aria-selected={tab === "files"} className={`seg-btn${tab === "files" ? " is-active" : ""}`} onClick={() => getState().setSettings({ sidebarTab: "files" })}>
               Files
             </button>
             <button role="tab" aria-selected={tab === "outline"} className={`seg-btn${tab === "outline" ? " is-active" : ""}`} onClick={() => getState().setSettings({ sidebarTab: "outline" })}>
               Outline
             </button>
+            <button role="tab" aria-selected={tab === "search"} className={`seg-btn${tab === "search" ? " is-active" : ""}`} onClick={() => getState().setSettings({ sidebarTab: "search" })}>Search</button>
           </div>
-          {tab === "files" ? <FilesPanel /> : <OutlinePanel />}
+          {tab === "files" ? <FilesPanel /> : tab === "outline" ? <OutlinePanel /> : <WorkspaceSearchPanel />}
           <SidebarFooter />
         </div>
       </aside>

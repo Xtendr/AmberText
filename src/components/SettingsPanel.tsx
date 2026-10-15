@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { DEFAULT_SETTINGS, getState, setState, useStore, type Accent, type Settings, type ThemePref, type WritingFont } from "../state/store";
 import { COMMANDS, formatKeys } from "../commands";
@@ -207,6 +207,7 @@ function Writing() {
 }
 
 function EditorSection() {
+  const imageFolder = useStore((s) => s.settings.imageFolder);
   return (
     <>
       <div className="set-group">
@@ -217,6 +218,14 @@ function EditorSection() {
       <div className="set-group">
         <h3>Files</h3>
         <ToggleRow k="autosave" label="Save automatically" desc="Write changes to disk a moment after you stop typing. Drafts are always kept safe between sessions." />
+        <div className="image-folder-choice">
+          <label className="set-label" htmlFor="image-folder">New image folders</label>
+          <div className="set-desc" id="image-folder-description">Choose where future pasted and copied images go, beside each saved document. Existing images stay in place.</div>
+          <select id="image-folder" className="image-folder-select" aria-describedby="image-folder-description" value={imageFolder} onChange={(e) => set({ imageFolder: e.target.value === "document" ? "document" : "shared" })}>
+            <option value="shared">Shared assets folder</option>
+            <option value="document">Document-named folder</option>
+          </select>
+        </div>
       </div>
     </>
   );
@@ -233,7 +242,7 @@ function Shortcuts() {
   );
   return (
     <div className="set-group">
-      <input className="dialog-input" style={{ marginTop: 0, marginBottom: 10 }} placeholder="Filter shortcuts…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input aria-label="Filter keyboard shortcuts" className="dialog-input" style={{ marginTop: 0, marginBottom: 10 }} placeholder="Filter shortcuts…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="shortcut-list">
         {rows.map((r) => (
           <div className="shortcut-row" key={r.id}>
@@ -264,6 +273,15 @@ function Shortcuts() {
 }
 
 export function SettingsPanel() {
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    closeButton.current?.focus();
+    return () => {
+      if (previous?.isConnected && previous !== document.body) previous.focus();
+      else bridge.focus();
+    };
+  }, []);
   const requested = useStore((s) => s.settingsSection) as Section | null;
   const [section, setSection] = useState<Section>(requested ?? "appearance");
   useEffect(() => {
@@ -274,7 +292,6 @@ export function SettingsPanel() {
   }, [requested]);
   const close = () => {
     setState({ settingsOpen: false });
-    requestAnimationFrame(() => bridge.focus());
   };
 
   useEffect(() => {
@@ -315,13 +332,28 @@ export function SettingsPanel() {
   return (
     <>
       <div className="settings-scrim" onMouseDown={close} />
-      <aside className="settings popover" role="dialog" aria-label="Settings">
+      <aside className="settings popover" role="dialog" aria-modal="true" aria-label="Settings" onKeyDown={(e) => {
+        if (getState().dialog || getState().palette) return;
+        if (e.key === "Tab") {
+          const nodes = [...e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')].filter(node => node.getClientRects().length > 0);
+          const at = nodes.indexOf(document.activeElement as HTMLElement);
+          const next = e.shiftKey ? (at <= 0 ? nodes.length - 1 : at - 1) : (at + 1) % nodes.length;
+          e.preventDefault(); nodes[next]?.focus();
+        } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
+          const group = (e.target as HTMLElement).closest('[role="radiogroup"]');
+          if (!group) return;
+          const radios = [...group.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+          const at = radios.indexOf(e.target as HTMLButtonElement);
+          const next = e.key === "Home" ? 0 : e.key === "End" ? radios.length - 1 : (at + (e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1) + radios.length) % radios.length;
+          e.preventDefault(); radios[next]?.focus(); radios[next]?.click();
+        }
+      }}>
         <div className="settings-head">
           <h2>Settings</h2>
-          <button className="icon-btn" onClick={reset} data-tip="Restore defaults">
+          <button aria-label="Restore defaults" className="icon-btn" onClick={reset} data-tip="Restore defaults">
             <RotateCcw size={15} />
           </button>
-          <button className="icon-btn" onClick={close} data-tip="Close" data-kbd="Esc">
+          <button ref={closeButton} aria-label="Close settings" className="icon-btn" onClick={close} data-tip="Close" data-kbd="Esc">
             <X size={16} />
           </button>
         </div>

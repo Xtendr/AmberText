@@ -1,12 +1,13 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { FileEntry } from "../lib/platform";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { preferenceStorage } from "../lib/preferenceStorage";
+import type { FileEntry, FileRevision, TextFormat } from "../lib/platform";
 
 export type ViewMode = "write" | "split" | "read";
 export type ThemePref = "system" | "light" | "dark";
 export type Accent = "amber" | "vermilion" | "ink" | "moss" | "plum" | "ocean" | "graphite";
 export type WritingFont = "serif" | "sans" | "mono";
-export type SidebarTab = "files" | "outline";
+export type SidebarTab = "files" | "outline" | "search";
 
 export interface Settings {
   theme: ThemePref;
@@ -21,7 +22,10 @@ export interface Settings {
   typewriter: boolean;
   spellcheck: boolean;
   autosave: boolean;
+  /** Folder scheme for future pasted or copied images; never relocates existing files. */
+  imageFolder: "shared" | "document";
   quietChrome: boolean;
+  historyEnabled: boolean;
   viewMode: ViewMode;
   sidebarOpen: boolean;
   sidebarTab: SidebarTab;
@@ -50,7 +54,9 @@ export const DEFAULT_SETTINGS: Settings = {
   typewriter: false,
   spellcheck: true,
   autosave: true,
+  imageFolder: "shared",
   quietChrome: false,
+  historyEnabled: true,
   viewMode: "write",
   sidebarOpen: true,
   sidebarTab: "files",
@@ -66,11 +72,16 @@ export const DEFAULT_SETTINGS: Settings = {
 export interface Doc {
   id: string;
   path: string | null;
+  originalPath: string | null;
   /** Fallback display name for untitled documents. */
   name: string;
   content: string;
   savedContent: string;
   mtime: number;
+  revision: FileRevision | null;
+  format: TextFormat;
+  originalText: string | null;
+  recoveryReason: string | null;
   eol: "\n" | "\r\n";
   saving: boolean;
   lastSavedAt: number | null;
@@ -142,6 +153,8 @@ export interface AppState {
   goals: Record<string, number>;
 
   docs: Doc[];
+  recoveryWarning: string | null;
+  historyWarning: string | null;
   activeId: string | null;
   workspace: Workspace | null;
   expanded: string[];
@@ -149,6 +162,8 @@ export interface AppState {
 
   cursor: CursorInfo;
   palette: PaletteMode | null;
+  historyOpen: string | null;
+  assetsOpen: boolean;
   settingsOpen: boolean;
   /** Section to show when the settings drawer opens. */
   settingsSection: string | null;
@@ -175,6 +190,8 @@ export const useStore = create<AppState>()(
       goals: {},
 
       docs: [],
+      recoveryWarning: null,
+      historyWarning: null,
       activeId: null,
       workspace: null,
       expanded: [],
@@ -182,6 +199,8 @@ export const useStore = create<AppState>()(
 
       cursor: { line: 1, col: 1, selChars: 0, selWords: 0, pos: 0 },
       palette: null,
+      historyOpen: null,
+      assetsOpen: false,
       settingsOpen: false,
       settingsSection: null,
       zen: false,
@@ -199,6 +218,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "margin:prefs",
+      storage: createJSONStorage(() => preferenceStorage),
       version: 4,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<AppState>;

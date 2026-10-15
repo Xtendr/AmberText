@@ -48,6 +48,12 @@ function highlight(code: string, lang: string): string {
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: true, breaks: false });
 
+/** Keep reference-label/entity semantics aligned with the existing renderer. */
+export const referenceUtils = {
+  label: (text: string) => md.utils.normalizeReference(text),
+  unescape: (text: string) => md.utils.unescapeAll(text),
+};
+
 md.renderer.rules.fence = (tokens, idx, _opts, renderEnv) => {
   const env = renderEnv as RenderEnv | undefined;
   const token = tokens[idx];
@@ -163,6 +169,11 @@ export function splitFrontmatter(src: string): { data: [string, string][]; body:
   }
   const lines = m[0].split("\n").length - 1;
   return { data, body: "\n".repeat(lines) + src.slice(m[0].length), lines };
+}
+
+/** Structured export evidence uses the same parser/plugins and heading IDs as preview. */
+export function parseMarkdownTokens(src: string, env: RenderEnv = {}) {
+  return md.parse(splitFrontmatter(src)?.body ?? src, env);
 }
 
 let purifyConfigured = false;

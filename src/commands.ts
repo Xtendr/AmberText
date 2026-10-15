@@ -5,9 +5,10 @@ import { insertBlock, insertLink, setHeading, toggleInline, toggleLinePrefix } f
 import { requestReplace } from "./editor/FindPanel";
 import { buildStandaloneHtml, copyRichText, renderForOutput } from "./lib/exporter";
 import { basename, dirname, sanitizeFileName } from "./lib/paths";
-import { dialogs, fileManagerName, fsApi, isMac, printPage } from "./lib/platform";
+import { dialogs, fileManagerName, fsApi, ioMessage, isMac, printPage } from "./lib/platform";
 import {
   adjustFontSize,
+  ask,
   closeActive,
   closeFolder,
   cycleTab,
@@ -70,10 +71,15 @@ async function exportHtml() {
   const path = await dialogs.saveFile(suggested, "html");
   if (!path) return;
   try {
-    await fsApi.writeText(path, html);
+    const disk = await fsApi.exists(path) ? await fsApi.readText(path) : null;
+    if (disk) {
+      const answer = await ask({ title: `Replace “${basename(path)}”?`, message: "This replaces the existing export on disk.", actions: [{ id: "cancel", label: "Cancel" }, { id: "replace", label: "Replace", kind: "danger" }] });
+      if (answer?.action !== "replace") return;
+    }
+    await fsApi.writeText(path, html, disk?.revision ?? null);
     toast(`Exported “${basename(path)}”`, "success", { label: `Show in ${fileManagerName}`, run: () => void fsApi.reveal(path) });
   } catch (e) {
-    toast(`Export failed — ${e instanceof Error ? e.message : String(e)}`, "error");
+    toast(`Export failed — ${ioMessage(e)}`, "error");
   }
 }
 
@@ -153,8 +159,11 @@ export const COMMANDS: Command[] = [
   { id: "open", title: "Open file…", group: "File", keys: "Mod+O", run: openFileDialog },
   { id: "open-folder", title: "Open folder…", group: "File", keys: "Mod+Shift+O", run: openFolderDialog },
   { id: "quick-open", title: "Go to file…", group: "File", keys: "Mod+P", run: () => setState({ palette: "files" }) },
+  { id: "workspace-search", title: "Search folder…", group: "File", keywords: "workspace text contents search", run: () => { getState().setSettings({sidebarOpen:true,sidebarTab:"search"}); window.setTimeout(()=>document.getElementById("workspace-query")?.focus(),0); } },
   { id: "save", title: "Save", group: "File", keys: "Mod+S", doc: true, run: saveActive },
   { id: "save-as", title: "Save as…", group: "File", keys: "Mod+Shift+S", doc: true, run: saveActiveAs },
+  { id: "history", title: "Local document history…", group: "File", keywords: "versions snapshots recover previous deleted", run: () => setState({ historyOpen: activeDoc()?.id ?? "all", palette: null }) },
+  { id: "asset-diagnostics", title: "Check images and links…", group: "File", keywords: "missing broken images links assets folder", run: () => setState({ assetsOpen: true, palette: null }) },
   { id: "close-tab", title: "Close tab", group: "File", keys: "Mod+W", doc: true, run: closeActive },
   { id: "export-html", title: "Export as HTML…", group: "File", doc: true, keywords: "web publish", run: exportHtml },
   { id: "export-pdf", title: "Export as PDF / Print…", group: "File", keys: "Mod+Shift+E", doc: true, keywords: "print pdf", run: exportPdf },
@@ -342,6 +351,7 @@ for (const c of COMMANDS) {
 }
 export function handleGlobalKey(e: KeyboardEvent): boolean {
   if (e.defaultPrevented) return false;
+  if (getState().historyOpen || getState().assetsOpen) return false;
   const combo = eventCombo(e);
   const cmd = comboMap.get(combo);
   if (!cmd) return false;
@@ -386,8 +396,10 @@ export const MENU_TO_COMMAND: Record<string, string> = {
   "open-folder": "open-folder",
   "close-folder": "close-folder",
   "quick-open": "quick-open",
+  "workspace-search": "workspace-search",
   save: "save",
   "save-as": "save-as",
+  history: "history",
   "export-html": "export-html",
   "export-pdf": "export-pdf",
   "close-tab": "close-tab",

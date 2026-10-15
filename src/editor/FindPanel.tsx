@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
   closeSearchPanel,
@@ -39,6 +39,7 @@ function FindPanel({ view, version, initialReplace }: { view: EditorView; versio
   const inputRef = useRef<HTMLInputElement>(null);
   const anchor = useRef(view.state.selection.main.from);
   const [stats, setStats] = useState({ total: 0, current: 0 });
+  const countId = useId();
 
   useLayoutEffect(() => {
     inputRef.current?.focus();
@@ -99,6 +100,7 @@ function FindPanel({ view, version, initialReplace }: { view: EditorView; versio
       <button
         className="find-toggle"
         data-tip={showReplace ? "Hide replace" : "Replace"}
+        aria-label={showReplace ? "Hide replace" : "Show replace"}
         onClick={() => setShowReplace((v) => !v)}
         aria-expanded={showReplace}
       >
@@ -112,28 +114,31 @@ function FindPanel({ view, version, initialReplace }: { view: EditorView; versio
               data-field="search"
               {...{ "main-field": "true" }}
               placeholder="Find"
+              aria-label="Find in document"
+              aria-describedby={countId}
+              aria-invalid={!!invalid}
               value={query.search}
               spellCheck={false}
               onChange={(e) => update({ search: e.target.value }, true)}
             />
-            <span className={`find-count${stats.total === 0 && query.search ? " is-empty" : ""}`}>{label}</span>
-            <button className={`find-opt${query.caseSensitive ? " on" : ""}`} data-tip="Match case" onClick={() => update({ caseSensitive: !query.caseSensitive })}>
+            <span id={countId} role="status" aria-live="polite" aria-atomic="true" className={`find-count${stats.total === 0 && query.search ? " is-empty" : ""}`}>{label}</span>
+            <button aria-label="Match case" aria-pressed={query.caseSensitive} className={`find-opt${query.caseSensitive ? " on" : ""}`} data-tip="Match case" onClick={() => update({ caseSensitive: !query.caseSensitive })}>
               <CaseSensitive size={15} />
             </button>
-            <button className={`find-opt${query.wholeWord ? " on" : ""}`} data-tip="Whole word" onClick={() => update({ wholeWord: !query.wholeWord })}>
+            <button aria-label="Whole word" aria-pressed={query.wholeWord} className={`find-opt${query.wholeWord ? " on" : ""}`} data-tip="Whole word" onClick={() => update({ wholeWord: !query.wholeWord })}>
               <WholeWord size={15} />
             </button>
-            <button className={`find-opt${query.regexp ? " on" : ""}`} data-tip="Regular expression" onClick={() => update({ regexp: !query.regexp })}>
+            <button aria-label="Regular expression" aria-pressed={query.regexp} className={`find-opt${query.regexp ? " on" : ""}`} data-tip="Regular expression" onClick={() => update({ regexp: !query.regexp })}>
               <Regex size={15} />
             </button>
           </div>
-          <button className="find-btn" data-tip="Previous" data-kbd="Shift+Enter" onClick={() => findPrevious(view)} disabled={!stats.total}>
+          <button aria-label="Previous match" className="find-btn" data-tip="Previous" data-kbd="Shift+Enter" onClick={() => findPrevious(view)} disabled={!stats.total}>
             <ArrowUp size={15} />
           </button>
-          <button className="find-btn" data-tip="Next" data-kbd="Enter" onClick={() => findNext(view)} disabled={!stats.total}>
+          <button aria-label="Next match" className="find-btn" data-tip="Next" data-kbd="Enter" onClick={() => findNext(view)} disabled={!stats.total}>
             <ArrowDown size={15} />
           </button>
-          <button className="find-btn" data-tip="Close" data-kbd="Esc" onClick={close}>
+          <button aria-label="Close find" className="find-btn" data-tip="Close" data-kbd="Esc" onClick={close}>
             <X size={15} />
           </button>
         </div>
@@ -143,6 +148,7 @@ function FindPanel({ view, version, initialReplace }: { view: EditorView; versio
               <input
                 data-field="replace"
                 placeholder="Replace"
+                aria-label="Replace with"
                 value={query.replace}
                 spellCheck={false}
                 onChange={(e) => update({ replace: e.target.value })}

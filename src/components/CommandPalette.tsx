@@ -211,9 +211,14 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
   useEffect(() => setActive(0), [query]);
 
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
     input.current?.focus();
     const len = input.current?.value.length ?? 0;
     input.current?.setSelectionRange(len, len);
+    return () => {
+      if (previous?.isConnected && previous !== document.body) previous.focus();
+      else if (getState().settings.viewMode !== "read") bridge.focus();
+    };
   }, []);
 
   useEffect(() => {
@@ -248,6 +253,9 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
     } else if (e.key === "Backspace" && (query === ">" || query === "#")) {
       e.preventDefault();
       setQuery("");
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      input.current?.focus();
     }
     e.stopPropagation();
   };
@@ -255,7 +263,7 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
   let lastSection = "";
   return (
     <div className="scrim dim" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="palette popover" role="dialog" aria-label="Command palette" onKeyDown={onKey}>
+      <div className="palette popover" role="dialog" aria-modal="true" aria-label="Command palette" onKeyDown={onKey}>
         <div className="palette-field">
           {mode === "commands" ? <ChevronRight size={18} /> : mode === "headings" ? <Hash size={17} /> : <Search size={17} />}
           {mode !== "files" && <span className="palette-mode">{mode === "commands" ? "Commands" : "Headings"}</span>}
@@ -266,10 +274,14 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
             placeholder={PLACEHOLDER[mode]}
             spellCheck={false}
             aria-autocomplete="list"
+            role="combobox"
+            aria-label={mode === "commands" ? "Search commands" : mode === "headings" ? "Search headings" : "Search files"}
+            aria-expanded="true"
+            aria-activedescendant={items[active] ? `palette-option-${active}` : undefined}
             aria-controls="palette-list"
           />
         </div>
-        <div className="palette-list" id="palette-list" ref={list} role="listbox">
+        <div className="palette-list" id="palette-list" ref={list} role="listbox" aria-label="Search results">
           {items.length === 0 && (
             <div className="palette-empty">
               {mode === "files" && !ws && !q ? "Open a folder to search its files — or type > for commands." : "No matches"}
@@ -283,6 +295,8 @@ export function CommandPalette({ mode: initialMode }: { mode: PaletteMode }) {
                 {header && <div className="palette-section">{header}</div>}
                 <button
                   role="option"
+                  id={`palette-option-${i}`}
+                  tabIndex={-1}
                   aria-selected={i === active}
                   className={`palette-item${i === active ? " is-active" : ""}${item.ai ? " is-ai" : ""}`}
                   onMouseMove={() => i !== active && setActive(i)}

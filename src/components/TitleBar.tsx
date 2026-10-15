@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, ChevronDown, Columns2, PanelLeft, PenLine, Plus, Search, X } from "lucide-react";
 import { getState, isDirty, setState, useStore, type ViewMode } from "../state/store";
 import { closeDoc, closeOthers, displayName, activate, moveTab, newDoc, openContextMenu, setViewMode, toggleSidebar } from "../state/actions";
@@ -28,9 +28,11 @@ function AppMenuButton() {
       item("open-folder"),
       ...(getState().workspace ? [item("close-folder")] : []),
       item("quick-open"),
+      item("workspace-search"),
       { separator: true },
       item("save"),
       item("save-as"),
+      item("history"),
       { separator: true },
       item("export-pdf", "Export as PDF…"),
       item("export-html"),
@@ -73,10 +75,9 @@ function Tabs() {
     }).length;
   };
 
-  const onContext = (e: ReactMouseEvent, id: string) => {
-    e.preventDefault();
+  const onContext = (x: number, y: number, id: string) => {
     const doc = docs.find((d) => d.id === id);
-    openContextMenu(e.clientX, e.clientY, [
+    openContextMenu(x, y, [
       { label: "Close", shortcut: keysFor("close-tab"), run: () => void closeDoc(id) },
       { label: "Close others", disabled: docs.length < 2, run: () => void closeOthers(id) },
       { separator: true },
@@ -94,7 +95,7 @@ function Tabs() {
   };
 
   return (
-    <div className="tb-tabs fade-on-type" role="tablist" ref={strip} data-tauri-drag-region>
+    <div className="tb-tabs fade-on-type" role="tablist" aria-label="Open documents" ref={strip} data-tauri-drag-region>
       {docs.map((d, i) => {
         const dirty = isDirty(d);
         const draft = !d.path;
@@ -102,8 +103,6 @@ function Tabs() {
         return (
           <div
             key={d.id}
-            role="tab"
-            aria-selected={d.id === activeId}
             className={`tab${d.id === activeId ? " is-active" : ""}${dragId === d.id ? " is-dragging" : ""}${showDrop ? " drop-before" : ""}`}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
@@ -141,16 +140,24 @@ function Tabs() {
             onAuxClick={(e) => {
               if (e.button === 1) void closeDoc(d.id);
             }}
-            onContextMenu={(e) => onContext(e, d.id)}
+            onContextMenu={(e) => { e.preventDefault(); if (e.button !== 2) return; /* keyboard opens it from onKeyDown */ onContext(e.clientX, e.clientY, d.id); }}
             data-tip={d.path ?? "Unsaved draft"}
           >
-            <span className={`tab-label${draft ? " is-draft" : ""}`}>{displayName(d)}</span>
+            <button role="tab" tabIndex={d.id === activeId ? 0 : -1} aria-selected={d.id === activeId} aria-label={`${displayName(d)}${dirty ? ", unsaved changes" : ""}${d.conflict ? ", changed on disk" : ""}`} className={`tab-label${draft ? " is-draft" : ""}`} onClick={() => activate(d.id)} onKeyDown={(e) => {
+              const tabs = [...(strip.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [])];
+              const next = e.key === "Home" ? 0 : e.key === "End" ? docs.length - 1 : e.key === "ArrowLeft" ? (i + docs.length - 1) % docs.length : e.key === "ArrowRight" ? (i + 1) % docs.length : null;
+              if (next !== null) { e.preventDefault(); activate(docs[next].id, false); tabs[next]?.focus(); }
+              else if (e.key === "Delete") { e.preventDefault(); void closeDoc(d.id); }
+              else if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+                e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); onContext(rect.left, rect.bottom, d.id);
+              }
+            }}>{displayName(d)}</button>
             <span className="tab-end">
               {dirty && <span className="tab-dot" />}
-              <span
+              <button
                 className="tab-close"
-                role="button"
-                aria-label="Close tab"
+                tabIndex={d.id === activeId ? 0 : -1}
+                aria-label={`Close ${displayName(d)}`}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -158,12 +165,12 @@ function Tabs() {
                 }}
               >
                 <X size={13} strokeWidth={2} />
-              </span>
+              </button>
             </span>
           </div>
         );
       })}
-      <button className="icon-btn sm tab-new" onClick={() => newDoc()} data-tip="New document" data-kbd={keysFor("new")}>
+      <button aria-label="New document" className="icon-btn sm tab-new" onClick={() => newDoc()} data-tip="New document" data-kbd={keysFor("new")}>
         <Plus size={15} />
       </button>
     </div>
@@ -198,8 +205,15 @@ function ViewSwitch() {
           }}
           role="radio"
           aria-checked={mode === m.id}
+          aria-label={m.label}
+          tabIndex={mode === m.id ? 0 : -1}
           className={`seg-btn${mode === m.id ? " is-active" : ""}`}
           onClick={() => setViewMode(m.id)}
+          onKeyDown={(e) => {
+            const next = e.key === "Home" ? 0 : e.key === "End" ? MODES.length - 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (i + MODES.length - 1) % MODES.length : e.key === "ArrowRight" || e.key === "ArrowDown" ? (i + 1) % MODES.length : null;
+            if (next === null) return;
+            e.preventDefault(); setViewMode(MODES[next].id, false); refs.current[next]?.focus();
+          }}
           data-tip={m.label}
           data-kbd={keysFor(m.cmd)}
         >
@@ -240,6 +254,7 @@ export function TitleBar() {
           className="icon-btn fade-on-type"
           onClick={() => toggleSidebar()}
           data-tip={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
           data-kbd={keysFor("toggle-sidebar")}
           aria-pressed={sidebarOpen}
         >
@@ -254,6 +269,7 @@ export function TitleBar() {
           className="icon-btn fade-on-type"
           onClick={() => setState({ palette: "commands" })}
           data-tip="Search commands"
+          aria-label="Search commands"
           data-kbd={keysFor("palette")}
         >
           <Search size={16} strokeWidth={1.9} />
